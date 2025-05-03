@@ -4,7 +4,7 @@
 // const char* WIFI_SSID = "";
 // const char* WIFI_PASSWORD = "";
 
-// const String API_KEY = "";
-// const String USERNAME = "";
+// const String LASTFM_APIKEY = "";
+// const String LASTFM_USERNAME = "";
 
 // #endif
