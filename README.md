@@ -72,8 +72,8 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
     * Ensure you have the correct `LGFX.h` file for your board within the project directory or that your LovyanGFX library installation is set up correctly for the `esp32-2432s022c`. Check the LovyanGFX documentation or examples if the display doesn't work out-of-the-box. The correct configuration is *vital*.
 8.  **Download/Clone Project Code:** Get all the `.ino` and `.h` files for this project.
 9.  **Configure Credentials:** See the "Configuration" section below. This is **required**!
-10. **Put `lv_conf.h` file in the right place:** The `lv_conf.h` file is required to be in `Arduino/libraries` directory - parallel to the `LovyanGFX` library directory.
-11. **Upload Code:** Open the main `.ino` file in the Arduino IDE and hit the Upload button (the arrow icon).
+10. **Put `lv_conf.h` file in the right place:** The `lv_conf.h` file from the repository is required to be in `Arduino/libraries` directory - parallel to the `LovyanGFX` library directory.
+11. **Upload Code:** Open the main `.ino` file from `lastFmNowPlaying` directory in the Arduino IDE and hit the Upload button (the arrow icon).
 
 ## Configuration
 
