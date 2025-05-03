@@ -1,76 +1,13 @@
-#define LGFX_USE_V1
-#include <HTTPClient.h> // this lib needs to be before LovyanGFX, otherwise drawJpgUrl and drawPngUrl is unusable
-#include <LovyanGFX.hpp> // main TFT library
-
-class LGFX : public lgfx::LGFX_Device
-{
-    lgfx::Panel_ST7789 _panel_instance; // ST7789 panel
-    lgfx::Bus_Parallel8 _bus_instance;  // MCU8080 8-bit parallel bus
-
-public:
-    LGFX(void)
-    {
-        { // Bus settings configuration
-            auto cfg = _bus_instance.config();
-            cfg.freq_write = 25000000; // Write frequency
-            cfg.pin_wr = 4;           // Write strobe pin
-            cfg.pin_rd = 2;           // Read strobe pin
-            cfg.pin_rs = 16;          // Register Select (DC / Data/Command) pin
-
-            // Data pins D0-D7
-            cfg.pin_d0 = 15;
-            cfg.pin_d1 = 13;
-            cfg.pin_d2 = 12;
-            cfg.pin_d3 = 14;
-            cfg.pin_d4 = 27;
-            cfg.pin_d5 = 25;
-            cfg.pin_d6 = 33;
-            cfg.pin_d7 = 32;
-
-            _bus_instance.config(cfg);              // Apply the bus configuration
-            _panel_instance.setBus(&_bus_instance); // Link the panel to the bus
-        }
-
-        { // Panel settings configuration
-            auto cfg = _panel_instance.config();
-
-            cfg.pin_cs = 17;    // Chip select pin
-            cfg.pin_rst = -1;   // Reset pin (-1 if not used)
-            cfg.pin_busy = -1;  // Busy pin (-1 if not used)
-
-            cfg.panel_width = 240;          // Actual usable width
-            cfg.panel_height = 320;         // Actual usable height
-            cfg.offset_x = 0;               // X offset in GRAM
-            cfg.offset_y = 0;               // Y offset in GRAM
-            cfg.offset_rotation = 0;        // Default rotation offset
-            // cfg.dummy_read_pixel = 8;    // (Keep commented unless needed)
-            // cfg.dummy_read_bits = 1;     // (Keep commented unless needed)
-            cfg.readable = false;           // Panel readable (often false for ST7789)
-            cfg.invert = false;             // Invert display colors
-            cfg.rgb_order = false;          // false = RGB, true = BGR
-            cfg.dlen_16bit = false;         // false = 8bit data length, true = 16bit
-            cfg.bus_shared = true;          // Bus shared with other devices (e.g., SD card) - Set appropriately
-
-            _panel_instance.config(cfg); // Apply the panel configuration
-        }
-
-        setPanel(&_panel_instance); // Set the configured panel as the active panel
-    }
-};
-// ==========================================================================
-
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
-#include "config.h" // Make sure this file exists and defines WIFI_SSID, WIFI_PASSWORD, USERNAME, API_KEY
+#include <HTTPClient.h>
+#include "LGFX.h"
+#include "config.h"
+#include "lastFmConfig.h"
 
 LGFX tft;
-
-// --- Last.fm API Details ---
-const char* LASTFM_HOST = "ws.audioscrobbler.com";
-const int LASTFM_PORT = 80; // Standard HTTP port
-String LASTFM_PATH = "/2.0/?method=user.getrecenttracks&user=" + String(USERNAME) + "&api_key=" + String(API_KEY) + "&format=json&limit=1"; // Added limit=1
 
 // --- Global Variables ---
 String albumCoverUrl = ""; // To store the URL of the album cover
