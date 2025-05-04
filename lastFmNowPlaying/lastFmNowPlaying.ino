@@ -1,3 +1,4 @@
+#include <time.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
@@ -86,6 +87,26 @@ void setup() {
     Serial.println("\nConnected to Wi-Fi!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+
+    // --- Add NTP Time Synchronization ---
+    Serial.println("Configuring time using NTP...");
+    configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "europe.pool.ntp.org");
+    Serial.print("Waiting for NTP time sync");
+    time_t now = time(nullptr);
+    while (now < 8 * 3600 * 2) { // Wait until time is reasonably beyond epoch (e.g., > 16 hours)
+        delay(500);
+        Serial.print(".");
+        now = time(nullptr);
+    }
+    Serial.println("\nTime synchronized!");
+
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) { // Use getLocalTime after configTzTime
+        Serial.print("Current local time: ");
+        Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S (%Z %z)"); // Print formatted time
+    } else {
+        Serial.println("Failed to obtain local time");
+    }
 
     // Display connection success on TFT
     tft.fillScreen(TFT_BLACK); // Clear screen before showing final status
