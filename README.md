@@ -102,12 +102,15 @@ Before uploading, you **must** configure your WiFi and Last.fm details:
 * **"No recent tracks found":** Make sure you're actively scrobbling on Last.fm and your username/API key in `config.h` are correct. Check the Last.fm API status online if problems persist.
 * **JSON Errors / HTTP Errors:** Could be temporary Last.fm API issues, WiFi instability, or sometimes memory issues (though the code tries to be efficient). Check the Serial Monitor output in Arduino IDE (Tools > Serial Monitor, set baud rate to 115200) for detailed error messages.
 * **Image Loading Failures (`JPG Fail`/`PNG Fail`):** LovyanGFX's `drawJpgUrl`/`drawPngUrl` rely on `HTTPClient`. This should work fine with the standard ESP32 core setup. Ensure the URL from Last.fm is valid (check Serial Monitor). Some complex images or server issues might cause occasional failures. Free RAM is monitored in the serial output around image drawing; very low RAM could be an issue.
+* **Cover Art Archive (CAA) Usage for JPEGs**: While PNG album covers from the Last.fm API generally display without issues, JPEGs present a challenge. Many JPEGs provided directly by Last.fm are in the *progressive* format. Decoding progressive JPEGs demands significantly more RAM than the *baseline* format, often causing memory exhaustion and display failures on constrained devices like the ESP32. Therefore, when a PNG cover isn't available from Last.fm, this application falls back to using the Cover Art Archive (CAA) API (looking up covers via MusicBrainz MBIDs obtained from Last.fm data). The CAA API is preferred in these cases because it typically provides album covers as more memory-friendly *baseline* JPEGs.
+* **CAA Redirects**: A challenge with the CAA API is handling HTTP redirects. The initial API request often redirects to the actual image URL. The code includes logic (`findFinalImageUrl` in `helpers.h`) to follow these redirects and obtain the final image link. Occasional failures might still occur due to server issues, complex redirect chains, or temporary network problems.
 
 ## Resources & Links
 
 * **CYD Setup Guide (Reference):** [witnessmenow/ESP32-Cheap-Yellow-Display SETUP.md](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/SETUP.md) (**IMPORTANT:** Ignore the specific setup instructions for the `TFT_eSPI` library mentioned there; use `LovyanGFX` as described above!)
 * **3D Printed Case:** [ESP32-2432S022C Case on MakerWorld](https://makerworld.com/en/models/1216297-esp32-2432s022c-case)
 * **Last.fm API Docs:** [user.getRecentTracks Method](https://www.last.fm/api/show/user.getRecentTracks)
+* **Cover Art Archive API Docs:** [release Method](https://musicbrainz.org/doc/Cover_Art_Archive/API#/release/%7Bmbid%7D/)
 * **LovyanGFX Library:** [GitHub Repository](https://github.com/lovyan03/LovyanGFX)
 
 ## Contact
