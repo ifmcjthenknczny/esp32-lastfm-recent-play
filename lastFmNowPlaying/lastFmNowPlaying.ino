@@ -16,10 +16,13 @@ LGFX tft;
 String albumCoverUrl = ""; // To store the URL of the album cover
 String lastDisplayedArtist = ""; // To avoid unnecessary redraws if track hasn't changed
 String lastDisplayedTrack = "";
+bool displayActive = true;
+unsigned long lastActivityTime = 0;
 
 // --- Function Prototypes ---
 void getNowPlaying();
 void displayAlbumCover(String coverUrl);
+void setDisplayActive(bool active);
 
 //====================================================================================
 // SETUP
@@ -109,6 +112,8 @@ void setup() {
         Serial.println("Failed to obtain local time");
     }
 
+    lastActivityTime = now;
+
     // Display connection success on TFT
     tft.fillScreen(TFT_BLACK); // Clear screen before showing final status
     tft.setCursor(10, 10);
@@ -155,6 +160,23 @@ void loop() {
     delay(REFRESH_MS);
 }
 
+void setDisplayActive(bool active) {
+    if (active && !displayActive) {
+        Serial.println("Turning display ON");
+        // tft.setBrightness(255);
+        displayActive = true;
+        lastDisplayedArtist = "";
+        lastDisplayedTrack = "";
+    } else if (!active && displayActive) {
+        // Wyłączanie wyświetlacza
+        Serial.println("Turning display OFF");
+        // tft.setBrightness(0);
+        tft.fillScreen(TFT_BLACK);
+        displayActive = false;
+    }
+}
+
+
 void getNowPlaying() {
     Serial.println("\nFetching Now Playing data...");
     String lastFmUrl = String("http://") + LASTFM_HOST + LASTFM_PATH;
@@ -180,6 +202,49 @@ void getNowPlaying() {
         JsonArray trackArray = recenttracks["track"];
         if (!trackArray.isNull() && trackArray.size() > 0) {
             JsonObject track = trackArray[0]; // Most recent track
+
+            bool isPlaying = false;
+            if (track.containsKey("@attr")) {
+                JsonObject attr = track["@attr"];
+                if (attr.containsKey("nowplaying") && attr["nowplaying"].as<String>() == "true") {
+                    isPlaying = true;
+                }
+            }
+
+            unsigned long trackTimestampUTS = 0;
+            if (track.containsKey("date") && track["date"].is<JsonObject>() && track["date"].containsKey("uts")) {
+                trackTimestampUTS = track["date"]["uts"].as<unsigned long>();
+            } else if (isPlaying) {
+                trackTimestampUTS = time(nullptr);
+            }
+
+            if (isPlaying) {
+                Serial.println("Track is currently playing.");
+                lastActivityTime = time(nullptr);
+                if (!displayActive) {
+                    setDisplayActive(true);
+                }
+            } else {
+                Serial.println("Track is not currently playing.");
+                if (trackTimestampUTS > lastActivityTime) {
+                    lastActivityTime = trackTimestampUTS;
+                }
+                time_t now_ts = time(nullptr);
+                unsigned long elapsedSeconds = now_ts - lastActivityTime;
+                Serial.printf("Time since last activity: %lu seconds\n", elapsedSeconds);
+
+                if (displayActive && (elapsedSeconds * 1000) > DISPLAY_OFF_MS) {
+                    Serial.printf("Timeout reached (%lu ms > %d ms). ", elapsedSeconds * 1000, DISPLAY_OFF_MS);
+                    setDisplayActive(false); // Wyłącz wyświetlacz
+                }
+            }
+
+            if (!displayActive) {
+                Serial.println("Display is OFF, skipping drawing.");
+                return;
+            }
+
+            Serial.println("Display is ON, proceeding with drawing...");
 
             // Use .as<String>() for safer extraction
             String songName = track["name"] | "Unknown Track"; // Default value if key missing
