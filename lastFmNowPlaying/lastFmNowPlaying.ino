@@ -5,7 +5,7 @@
 #include <HTTPClient.h>
 #include "LGFX.h"
 #include "config.h"
-#include "lastFmConfig.h"
+#include "apiConfig.h"
 
 LGFX tft;
 
@@ -121,7 +121,7 @@ void loop() {
         tft.println("WiFi Lost! Reconnecting...");
         // TODO: add WiFi reconnection logic
         delay(5000); // Wait before potentially retrying in the next loop
-        // Optionally restart the ESP
+        // TODO: Optionally restart the ESP
         // ESP.restart();
         return; // Skip fetching data if disconnected
     }
@@ -132,8 +132,92 @@ void loop() {
     delay(3000); // Refresh every 3 seconds
 }
 
+String getAlbumCoverUrl(JsonObject track) {
+    albumCoverUrl = "";
+    JsonArray images = track["image"];
+    bool isPng = images[0]["#text"].as<String>().endsWith(".png");
+
+    if (!images.isNull() && isPng) {
+        // Prefer the largest
+        Serial.println("Getting album cover url from last.fm API response...");
+        if (images.size() > 3) albumCoverUrl = images[3]["#text"].as<String>(); // Try extralarge
+        else if (images.size() > 2) albumCoverUrl = images[2]["#text"].as<String>(); // Try large
+        else if (images.size() > 1) albumCoverUrl = images[1]["#text"].as<String>(); // Fallback to medium
+        else albumCoverUrl = images[0]["#text"].as<String>();
+    }
+    else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
+        Serial.println("Trying to getting album cover url from cover album art API response...");
+        String mbid = track["album"]["mbid"].as<String>();
+
+        if (mbid.length() > 0) {
+            String albumApiPath = coverAlbumPath(mbid);
+
+            WiFiClientSecure client;
+            HTTPClient httpClient;
+
+            // Optional: Allow insecure connections if certificate validation fails (use with caution)
+            // client.setInsecure();
+
+            // Construct the full URL for CAA API
+            String apiUrl = "https://" + String(COVERALBUM_HOST) + albumApiPath;
+            Serial.println("Fetching from CAA: " + apiUrl);
+
+            // Configure HTTP client
+            // Note: Some ESP32 Core versions might require begin(client, url) for HTTPS
+            if (httpClient.begin(client, apiUrl)) {
+                httpClient.addHeader("Accept", "application/json");
+                httpClient.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+                int httpCode = httpClient.GET();
+
+                if (httpCode == HTTP_CODE_OK) {
+                    Serial.printf("CAA request successful (HTTP Code: %d). Parsing JSON...\n", httpCode);
+                    DynamicJsonDocument doc(2048);
+
+                    DeserializationError error = deserializeJson(doc, httpClient.getStream());
+
+                    if (!error) {
+                        JsonObject root = doc.as<JsonObject>();
+                        if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
+                            JsonObject firstImage = root["images"][0];
+                            if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
+                                albumCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+                                Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
+                            } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) {
+                                    albumCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+                                    Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
+                            } else {
+                                Serial.println("CAA JSON response missing 'images[0].thumbnails.small' and 'images[0].thumbnails.250'");
+                            }
+                        } else {
+                            Serial.println("CAA JSON response missing 'images' array or it's empty.");
+                        }
+                    } else {
+                        Serial.print("deserializeJson() failed: ");
+                        Serial.println(error.c_str());
+                    }
+                } else if (httpCode == HTTP_CODE_NOT_FOUND) {
+                     Serial.println("Cover art not found on Cover Art Archive (404).");
+                } else {
+                    Serial.printf("[HTTP] GET... failed, error code: %d (%s)\n", httpCode, httpClient.errorToString(httpCode).c_str());
+                }
+
+                httpClient.end();
+            } else {
+                Serial.printf("[HTTP] Unable to connect to %s\n", COVERALBUM_HOST);
+            }
+
+        } else {
+            Serial.println("Album MBID is present but empty.");
+        }
+    } else {
+        Serial.println("Track JSON missing 'album.mbid' needed for Cover Art Archive lookup.");
+    }
+    return albumCoverUrl;
+}
+
 //====================================================================================
-// Get Now Playing Data using WiFiClient (for JSON API)
+// Get Now Playing Data
 //====================================================================================
 void getNowPlaying() {
     WiFiClient client; // Create a WiFiClient object for the API request
@@ -158,7 +242,7 @@ void getNowPlaying() {
 
     client.print(String("GET ") + LASTFM_PATH + " HTTP/1.1\r\n" +
                  "Host: " + LASTFM_HOST + "\r\n" +
-                 "Connection: close\r\n\r\n"); // Important: Use "Connection: close" and end with empty line
+                 "Connection: close\r\n\r\n");
 
     // --- Wait for response (with timeout) ---
     unsigned long timeout = millis();
@@ -254,21 +338,13 @@ void getNowPlaying() {
                       if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
                           Serial.println("Track has not changed. Skipping redraw.");
                           client.stop(); // Still need to stop the client
-                          return; // Exit function early
+                          return;
                       }
                       // Update last displayed info
                       lastDisplayedArtist = artistName;
                       lastDisplayedTrack = songName;
 
-                      albumCoverUrl = "";
-                      JsonArray images = track["image"];
-                      if (!images.isNull()) {
-                        //   Prefer the largest
-                          if (images.size() > 3) albumCoverUrl = images[3]["#text"].as<String>(); // Try extralarge
-                          else if (images.size() > 2) albumCoverUrl = images[2]["#text"].as<String>(); // Try large
-                          else if (images.size() > 1) albumCoverUrl = images[1]["#text"].as<String>(); // Fallback to medium
-                          else albumCoverUrl = albumCoverUrl = images[0]["#text"].as<String>();
-                      }
+                      albumCoverUrl = getAlbumCoverUrl(track);
 
                       Serial.println("--- Now Playing ---");
                       Serial.print("Artist: "); Serial.println(artistName);
@@ -285,9 +361,9 @@ void getNowPlaying() {
                       int coverSize = 128; // Example size
                       int textStartY = 10; // Default start Y for text
 
-                      if (albumCoverUrl != "" && albumCoverUrl.startsWith("http")) { // Check for valid URL
+                      if (albumCoverUrl != "" && albumCoverUrl.startsWith("http")) {
                            displayAlbumCover(albumCoverUrl);
-                           textStartY = coverSize + 5; // Start text below the cover area
+                           textStartY = coverSize;
                       } else {
                            Serial.println("No valid album cover URL found.");
                       }
@@ -373,34 +449,43 @@ void getNowPlaying() {
 // Display Album Cover
 //====================================================================================
 void displayAlbumCover(String coverUrl) {
-    Serial.print("Attempting display via drawXxxUrl: "); Serial.println(coverUrl);
     Serial.printf("Free RAM before draw: %u bytes\n", ESP.getFreeHeap());
 
     int x = 0; // Top-left X
     int y = 0; // Top-left Y
     bool success = false;
-    const char* failText = "Load Fail";
+    String failText = "Load Fail";
+    String functionAttempted = "N/A";
 
-    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
-        failText = "JPG Fail";
-        success = tft.drawJpgUrl(coverUrl.c_str(), x, y);
+if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
+    failText = "JPG Failed";
+    functionAttempted = "tft.drawJpgUrl";
+    Serial.println("Attempting " + functionAttempted + "...");
+    success = tft.drawJpgUrl(coverUrl.c_str(), x, y);
 
-    } else if (coverUrl.endsWith(".png")) {
-        failText = "PNG Fail";
-        success = tft.drawPngUrl(coverUrl.c_str(), x, y);
+} else if (coverUrl.endsWith(".png")) {
+    failText = "PNG Failed";
+    functionAttempted = "tft.drawPngUrl";
+    Serial.println("Attempting " + functionAttempted + "...");
+    success = tft.drawPngUrl(coverUrl.c_str(), x, y);
 
+} else {
+    Serial.println("Unknown image type based on URL: " + coverUrl);
+    failText = "Type Failed";
+    functionAttempted = "No draw function applicable";
+    success = false;
+}
+
+if (success) {
+    Serial.println(functionAttempted + " reported SUCCESS.");
+} else {
+    if (functionAttempted == "tft.drawJpgUrl" || functionAttempted == "tft.drawPngUrl") {
+        Serial.println(functionAttempted + " reported FAILURE.");
     } else {
-        Serial.println("Unknown image type based on URL.");
-        failText = "Type Fail";
-        success = false;
+        Serial.println("Image drawing skipped/failed due to unknown type.");
     }
-
-    if (success) {
-        Serial.println("drawXxxUrl reported SUCCESS.");
-    } else {
-        Serial.println("drawXxxUrl reported FAILURE.");
-
-    }
+    Serial.println("Failure detail: " + failText);
+}
      Serial.printf("Free RAM after draw: %u bytes\n", ESP.getFreeHeap());
 }
 
