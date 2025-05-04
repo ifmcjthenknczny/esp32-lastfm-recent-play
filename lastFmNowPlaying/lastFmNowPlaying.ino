@@ -19,6 +19,8 @@ String lastDisplayedTrack = "";
 bool displayActive = true;
 unsigned long lastActivityTime = 0;
 
+const int ALBUM_COVER_SIZE_PX = 320;
+
 // --- Function Prototypes ---
 void getNowPlaying();
 void displayAlbumCover(String coverUrl);
@@ -224,6 +226,7 @@ void getNowPlaying() {
                 if (!displayActive) {
                     setDisplayActive(true);
                 }
+                displayPlayIcon();
             } else {
                 Serial.println("Track is not currently playing.");
                 if (trackTimestampUTS > lastActivityTime) {
@@ -417,6 +420,13 @@ if (success) {
 }
      Serial.printf("Free RAM after draw: %u bytes\n", ESP.getFreeHeap());
 }
+
+void displayPlayIcon() {
+  int padding = 5;
+  int x = tft.width() - PLAYICON_PX - padding;
+  int y = padding;
+  tft.drawPngUrl(PLAYICON_URL, x, y);
+ }
 
 void drawAlbumFailureFallback(int x, int y, String failText) {
     // Draw failure placeholder
