@@ -6,6 +6,7 @@
 #include "LGFX.h"
 #include "config.h"
 #include "apiConfig.h"
+#include "helpers.h"
 
 LGFX tft;
 
@@ -158,55 +159,43 @@ String getAlbumCoverUrl(JsonObject track) {
             // Optional: Allow insecure connections if certificate validation fails (use with caution)
             // client.setInsecure();
 
-            // Construct the full URL for CAA API
-            String apiUrl = "https://" + String(COVERALBUM_HOST) + albumApiPath;
-            Serial.println("Fetching from CAA: " + apiUrl);
+            Serial.println("Fetching from CAA: " + albumApiPath);
 
-            // Configure HTTP client
-            // Note: Some ESP32 Core versions might require begin(client, url) for HTTPS
-            if (httpClient.begin(client, apiUrl)) {
-                httpClient.addHeader("Accept", "application/json");
-                httpClient.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+            String jsonBody = fetchJsonOverHttps(COVERALBUM_HOST, COVERALBUM_PORT, albumApiPath.c_str());
 
-                int httpCode = httpClient.GET();
+            if (jsonBody.length() > 0) {
+                // We got a response body, proceed with JSON parsing
+                Serial.println("Manual HTTPS fetch succeeded. Parsing JSON...");
+                DynamicJsonDocument doc(JSON_BUFFER_SIZE);
 
-                if (httpCode == HTTP_CODE_OK) {
-                    Serial.printf("CAA request successful (HTTP Code: %d). Parsing JSON...\n", httpCode);
-                    DynamicJsonDocument doc(2048);
+                DeserializationError error = deserializeJson(doc, jsonBody); // Parse the String body
 
-                    DeserializationError error = deserializeJson(doc, httpClient.getStream());
-
-                    if (!error) {
-                        JsonObject root = doc.as<JsonObject>();
-                        if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
-                            JsonObject firstImage = root["images"][0];
-                            if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
-                                albumCoverUrl = firstImage["thumbnails"]["small"].as<String>();
-                                Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
-                            } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) {
-                                    albumCoverUrl = firstImage["thumbnails"]["250"].as<String>();
-                                    Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
-                            } else {
-                                Serial.println("CAA JSON response missing 'images[0].thumbnails.small' and 'images[0].thumbnails.250'");
-                            }
+                if (!error) {
+                    JsonObject root = doc.as<JsonObject>();
+                    if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
+                        JsonObject firstImage = root["images"][0];
+                        if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
+                            albumCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+                            Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
+                        } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
+                            albumCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+                            Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
                         } else {
-                            Serial.println("CAA JSON response missing 'images' array or it's empty.");
+                            Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
                         }
                     } else {
-                        Serial.print("deserializeJson() failed: ");
-                        Serial.println(error.c_str());
+                        Serial.println("CAA JSON response missing 'images' array or it's empty.");
                     }
-                } else if (httpCode == HTTP_CODE_NOT_FOUND) {
-                     Serial.println("Cover art not found on Cover Art Archive (404).");
                 } else {
-                    Serial.printf("[HTTP] GET... failed, error code: %d (%s)\n", httpCode, httpClient.errorToString(httpCode).c_str());
+                    // JSON Parsing Failed
+                    Serial.print("deserializeJson() failed: ");
+                    Serial.println(error.c_str());
+                    Serial.println("Received body was:");
+                    Serial.println(jsonBody);
                 }
-
-                httpClient.end();
             } else {
-                Serial.printf("[HTTP] Unable to connect to %s\n", COVERALBUM_HOST);
+                Serial.println("Failed to fetch JSON data from CAA using manual HTTPS (check logs from fetchJsonOverHttps).");
             }
-
         } else {
             Serial.println("Album MBID is present but empty.");
         }
@@ -304,7 +293,7 @@ void getNowPlaying() {
         Serial.println("Headers received, processing JSON body...");
 
         // Allocate the JSON document
-        DynamicJsonDocument doc(2048);
+        DynamicJsonDocument doc(JSON_BUFFER_SIZE);
 
         // Parse JSON directly from the client stream (memory efficient)
         DeserializationError error = deserializeJson(doc, client);
