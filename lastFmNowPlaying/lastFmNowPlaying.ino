@@ -154,6 +154,98 @@ void loop() {
     delay(3000); // Refresh every 3 seconds
 }
 
+void processNowPlaying() {
+    Serial.println("\nFetching Now Playing data...");
+    String lastFmUrl = String("http://") + LASTFM_HOST + LASTFM_PATH;
+
+    DynamicJsonDocument doc = fetchJson(lastFmUrl.c_str());
+
+    // Check if the fetch and parse was successful
+    if (doc.isNull()) {
+        Serial.println("Failed to fetch or parse JSON data.");
+        // Optional: Display error on TFT
+        // tft.fillScreen(TFT_RED); ...
+        // Reset state if needed
+        lastDisplayedArtist = "";
+        lastDisplayedTrack = "";
+        return;
+    }
+
+    Serial.println("JSON Received and Parsed. Extracting data...");
+
+    // Now, safely extract data from the VALID document
+    JsonObject recenttracks = doc["recenttracks"];
+    if (!recenttracks.isNull()) {
+        JsonArray trackArray = recenttracks["track"];
+        if (!trackArray.isNull() && trackArray.size() > 0) {
+            JsonObject track = trackArray[0]; // Most recent track
+
+            // Use .as<String>() for safer extraction
+            String songName = track["name"] | "Unknown Track"; // Default value if key missing
+            String albumName = track["album"]["#text"] | "Unknown Album";
+            String artistName = track["artist"]["#text"] | "Unknown Artist";
+
+            // Check if track changed before redrawing everything
+            if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
+                Serial.println("Track has not changed. Skipping redraw.");
+                return;
+            }
+            // Update last displayed info
+            lastDisplayedArtist = artistName;
+            lastDisplayedTrack = songName;
+
+            String albumCoverUrl = getAlbumCoverUrl(track);
+
+            Serial.println("--- Now Playing ---");
+            Serial.print("Artist: "); Serial.println(artistName);
+            Serial.print("Track: "); Serial.println(songName);
+            Serial.print("Album: "); Serial.println(albumName);
+            Serial.print("Cover URL: "); Serial.println(albumCoverUrl);
+
+            // --- Display on TFT (Your existing logic) ---
+            tft.startWrite();
+            tft.fillScreen(TFT_BLACK);
+
+            int textStartY = 10; // Default start Y for text
+             if (albumCoverUrl != "") {
+                displayAlbumCover(albumCoverUrl); // Call your display function
+                textStartY = 128; // Start text below a 128px cover
+            } else {
+                Serial.println("No valid album cover URL found.");
+            }
+
+            // Display Text Info (simplified from your original code)
+            tft.setCursor(10, textStartY);
+
+            tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(1); tft.println("Artist:");
+            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(artistName);
+            tft.println();
+            tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(1); tft.println("Track:");
+            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(songName);
+            tft.println();
+            tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(1); tft.println("Album:");
+            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(1); tft.println(albumName); // Smaller size for album
+
+            tft.endWrite();
+
+        } else {
+            Serial.println("No tracks found in response.");
+            // Handle display for "no tracks" state
+             if (lastDisplayedArtist != "" || lastDisplayedTrack != "") { // Update only if state changes
+                tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(2);
+                tft.setCursor(10, 10); tft.println("No recent tracks found.");
+                lastDisplayedArtist = ""; lastDisplayedTrack = ""; // Reset state
+            }
+        }
+    } else {
+        Serial.println("Key 'recenttracks' not found in JSON.");
+        // Handle display for invalid JSON structure
+        tft.fillScreen(TFT_RED); tft.setTextColor(TFT_WHITE); tft.setTextSize(1);
+        tft.setCursor(10, 10); tft.println("Error: Invalid JSON structure from API");
+        lastDisplayedArtist = ""; lastDisplayedTrack = ""; // Reset state
+    }
+}
+
 String getAlbumCoverUrl(JsonObject track) {
     albumCoverUrl = "";
     JsonArray images = track["image"];
@@ -172,7 +264,7 @@ String getAlbumCoverUrl(JsonObject track) {
         String mbid = track["album"]["mbid"].as<String>();
 
         if (mbid.length() > 0) {
-            String albumApiPath = coverAlbumPath(mbid);
+            String albumApiPath = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
 
             WiFiClientSecure client;
             HTTPClient httpClient;
@@ -182,24 +274,23 @@ String getAlbumCoverUrl(JsonObject track) {
 
             Serial.println("Fetching from CAA: " + albumApiPath);
 
-            String jsonBody = fetchJsonOverHttps(COVERALBUM_HOST, COVERALBUM_PORT, albumApiPath.c_str());
+            DynamicJsonDocument doc = fetchJson(albumApiPath.c_str());
 
-            if (jsonBody.length() > 0) {
-                // We got a response body, proceed with JSON parsing
-                Serial.println("Manual HTTPS fetch succeeded. Parsing JSON...");
-                DynamicJsonDocument doc(JSON_BUFFER_SIZE);
-
-                DeserializationError error = deserializeJson(doc, jsonBody); // Parse the String body
-
-                if (!error) {
+            if (doc.isNull()) {
+                Serial.println("Failed to fetch JSON data from CAA.");
+                return albumCoverUrl;
+            }
                     JsonObject root = doc.as<JsonObject>();
                     if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
                         JsonObject firstImage = root["images"][0];
+                        String initialCoverUrl = "";
                         if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
-                            albumCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+                            initialCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+                            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
                             Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
                         } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
-                            albumCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+                            initialCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+                            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
                             Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
                         } else {
                             Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
@@ -207,16 +298,6 @@ String getAlbumCoverUrl(JsonObject track) {
                     } else {
                         Serial.println("CAA JSON response missing 'images' array or it's empty.");
                     }
-                } else {
-                    // JSON Parsing Failed
-                    Serial.print("deserializeJson() failed: ");
-                    Serial.println(error.c_str());
-                    Serial.println("Received body was:");
-                    Serial.println(jsonBody);
-                }
-            } else {
-                Serial.println("Failed to fetch JSON data from CAA using manual HTTPS (check logs from fetchJsonOverHttps).");
-            }
         } else {
             Serial.println("Album MBID is present but empty.");
         }
