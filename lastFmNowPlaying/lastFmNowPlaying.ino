@@ -7,36 +7,31 @@
 #include "LGFX.h"
 #include "config.h"
 #include "apiConfig.h"
-#include "helpers.h"
 #include "userSettings.h"
+#include "fetch.h"
 
 LGFX tft;
 
 // --- Global Variables ---
-String albumCoverUrl = ""; // To store the URL of the album cover
-String lastDisplayedArtist = ""; // To avoid unnecessary redraws if track hasn't changed
+// To avoid unnecessary redraws if track hasn't changed
+String lastDisplayedAlbumCoverUrl = "";
+String lastDisplayedArtist = ""; 
 String lastDisplayedTrack = "";
 bool displayActive = true;
 unsigned long lastActivityTime = 0;
-
-const int ALBUM_COVER_SIZE_PX = 320;
 
 // --- Function Prototypes ---
 void getNowPlaying();
 void displayAlbumCover(String coverUrl);
 void setDisplayActive(bool active);
 
-//====================================================================================
-// SETUP
-//====================================================================================
 void setup() {
-    // --- Initialize Serial Monitor ---
+    // --- Initialize serial monitor ---
     Serial.begin(115200);
     unsigned long serialStart = millis();
     while (!Serial && millis() - serialStart < 2000) { // Wait max 2 seconds for serial
          delay(10);
     }
-    Serial.println("\n--- Sketch Start ---"); // Initial message to confirm Serial works
 
     // --- Initialize TFT Display using LovyanGFX ---
     Serial.println("Initializing TFT with LovyanGFX...");
@@ -53,7 +48,7 @@ void setup() {
 
     // Configure text defaults
     tft.setTextColor(TFT_WHITE, TFT_BLACK); // Set default text color
-    tft.setTextSize(1);                      // Set default text size (adjust scaling if needed)
+    tft.setTextSize(2);                      // Set default text size (adjust scaling if needed)
     tft.setCursor(10, 10);                   // Set initial cursor position
     tft.println("TFT Initialized (LovyanGFX)."); // Display initial status on TFT
     Serial.println("TFT basics set up.");
@@ -137,9 +132,6 @@ void setup() {
     Serial.println("Initial data fetch attempt complete.");
 }
 
-//====================================================================================
-// LOOP
-//====================================================================================
 void loop() {
     // Check WiFi status periodically
     if(WiFi.status() != WL_CONNECTED) {
@@ -162,21 +154,9 @@ void loop() {
     delay(REFRESH_MS);
 }
 
-void setDisplayActive(bool active) {
-    if (active && !displayActive) {
-        Serial.println("Turning display ON");
-        // tft.setBrightness(255);
-        displayActive = true;
-        lastDisplayedArtist = "";
-        lastDisplayedTrack = "";
-    } else if (!active && displayActive) {
-        // Wyłączanie wyświetlacza
-        Serial.println("Turning display OFF");
-        // tft.setBrightness(0);
-        tft.fillScreen(TFT_BLACK);
-        displayActive = false;
-    }
-}
+
+
+
 
 
 void getNowPlaying() {
@@ -238,7 +218,7 @@ void getNowPlaying() {
 
                 if (displayActive && (elapsedSeconds * 1000) > DISPLAY_OFF_MS) {
                     Serial.printf("Timeout reached (%lu ms > %d ms). ", elapsedSeconds * 1000, DISPLAY_OFF_MS);
-                    setDisplayActive(false); // Wyłącz wyświetlacz
+                    setDisplayActive(false);
                 }
             }
 
@@ -263,40 +243,26 @@ void getNowPlaying() {
             lastDisplayedArtist = artistName;
             lastDisplayedTrack = songName;
 
-            String albumCoverUrl = getAlbumCoverUrl(track);
+            String newAlbumCoverUrl = getAlbumCoverUrl(track);
 
             Serial.println("--- Now Playing ---");
             Serial.print("Artist: "); Serial.println(artistName);
             Serial.print("Track: "); Serial.println(songName);
             Serial.print("Album: "); Serial.println(albumName);
-            Serial.print("Cover URL: "); Serial.println(albumCoverUrl);
+            Serial.print("Cover URL: "); Serial.println(newAlbumCoverUrl);
 
-            // --- Display on TFT (Your existing logic) ---
             tft.startWrite();
-            tft.fillScreen(TFT_BLACK);
+            // tft.fillScreen(TFT_BLACK);
 
-            int textStartY = 10; // Default start Y for text
-             if (albumCoverUrl != "") {
-                displayAlbumCover(albumCoverUrl); // Call your display function
-                textStartY = 128; // Start text below a 128px cover
+            if (newAlbumCoverUrl != "" && newAlbumCoverUrl != lastDisplayedAlbumCoverUrl) {
+                displayAlbumCover(newAlbumCoverUrl);
+                lastDisplayedAlbumCoverUrl = newAlbumCoverUrl;
             } else {
                 Serial.println("No valid album cover URL found.");
             }
 
-            // Display Text Info (simplified from your original code)
-            tft.setCursor(10, textStartY);
-
-            tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(1); tft.println("Artist:");
-            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(artistName);
-            tft.println();
-            tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(1); tft.println("Track:");
-            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(songName);
-            tft.println();
-            tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(1); tft.println("Album:");
-            tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(1); tft.println(albumName); // Smaller size for album
-
+            displayTrackInfo(artistName, songName, albumName);
             tft.endWrite();
-
         } else {
             Serial.println("No tracks found in response.");
             // Handle display for "no tracks" state
@@ -316,7 +282,7 @@ void getNowPlaying() {
 }
 
 String getAlbumCoverUrl(JsonObject track) {
-    albumCoverUrl = "";
+    String albumCoverUrl = "";
     JsonArray images = track["image"];
     bool isPng = images[0]["#text"].as<String>().endsWith(".png");
 
@@ -338,9 +304,6 @@ String getAlbumCoverUrl(JsonObject track) {
             WiFiClientSecure client;
             HTTPClient httpClient;
 
-            // Optional: Allow insecure connections if certificate validation fails (use with caution)
-            // client.setInsecure();
-
             Serial.println("Fetching from CAA: " + albumApiPath);
 
             DynamicJsonDocument doc = fetchJson(albumApiPath.c_str());
@@ -349,25 +312,24 @@ String getAlbumCoverUrl(JsonObject track) {
                 Serial.println("Failed to fetch JSON data from CAA.");
                 return albumCoverUrl;
             }
-
-                    JsonObject root = doc.as<JsonObject>();
-                    if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
-                        JsonObject firstImage = root["images"][0];
-                        String initialCoverUrl = "";
-                        if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
-                            initialCoverUrl = firstImage["thumbnails"]["small"].as<String>();
-                            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
-                            Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
-                        } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
-                            initialCoverUrl = firstImage["thumbnails"]["250"].as<String>();
-                            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
-                            Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
-                        } else {
-                            Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
-                        }
-                    } else {
-                        Serial.println("CAA JSON response missing 'images' array or it's empty.");
-                    }
+            JsonObject root = doc.as<JsonObject>();
+            if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
+                JsonObject firstImage = root["images"][0];
+                String initialCoverUrl = "";
+                if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
+                    initialCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+                    albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
+                    Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
+                } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
+                    initialCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+                    albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
+                    Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
+                } else {
+                    Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
+                }
+            } else {
+                Serial.println("CAA JSON response missing 'images' array or it's empty.");
+            }
         } else {
             Serial.println("Album MBID is present but empty.");
         }
@@ -377,9 +339,23 @@ String getAlbumCoverUrl(JsonObject track) {
     return albumCoverUrl;
 }
 
-//====================================================================================
-// Display Album Cover
-//====================================================================================
+void displayPlayIcon() {
+  int x = tft.width() - PLAYICON_PX - PLAYICON_PADDING_PX;
+  int y = PLAYICON_PADDING_PX;
+  tft.drawPngUrl(PLAYICON_URL, x, y);
+}
+
+void drawAlbumFailureFallback(int x, int y, String failText) {
+    // Draw failure placeholder
+    tft.fillRect(x, y, ALBUM_COVER_SIZE_PX, ALBUM_COVER_SIZE_PX, TFT_DARKGRAY);
+    tft.setTextColor(TFT_WHITE, TFT_DARKGRAY);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM); // Middle Center datum
+    tft.drawString(failText, x + ALBUM_COVER_SIZE_PX / 2, y + ALBUM_COVER_SIZE_PX / 2);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); // Reset text color
+    tft.setTextDatum(TL_DATUM); // Reset datum to Top Left (default)
+}
+
 void displayAlbumCover(String coverUrl) {
     Serial.printf("Free RAM before draw: %u bytes\n", ESP.getFreeHeap());
 
@@ -389,53 +365,69 @@ void displayAlbumCover(String coverUrl) {
     String failText = "Load Fail";
     String functionAttempted = "N/A";
 
-if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
-    failText = "JPG Failed";
-    functionAttempted = "tft.drawJpgUrl";
-    Serial.println("Attempting " + functionAttempted + "...");
-    success = tft.drawJpgUrl(coverUrl.c_str(), x, y);
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
+        failText = "JPG Failed";
+        functionAttempted = "tft.drawJpgUrl";
+        Serial.println("Attempting " + functionAttempted + "...");
+        success = tft.drawJpgUrl(coverUrl.c_str(), x, y);
 
-} else if (coverUrl.endsWith(".png")) {
-    failText = "PNG Failed";
-    functionAttempted = "tft.drawPngUrl";
-    Serial.println("Attempting " + functionAttempted + "...");
-    success = tft.drawPngUrl(coverUrl.c_str(), x, y);
+    } else if (coverUrl.endsWith(".png")) {
+        failText = "PNG Failed";
+        functionAttempted = "tft.drawPngUrl";
+        Serial.println("Attempting " + functionAttempted + "...");
+        success = tft.drawPngUrl(coverUrl.c_str(), x, y);
 
-} else {
-    Serial.println("Unknown image type based on URL: " + coverUrl);
-    failText = "Type Failed";
-    functionAttempted = "No draw function applicable";
-    success = false;
-}
+    } else {
+        Serial.println("Unknown image type based on URL: " + coverUrl);
+        failText = "Type Failed";
+        functionAttempted = "No draw function applicable";
+        success = false;
+    }
 
-if (success) {
-    Serial.println(functionAttempted + " reported SUCCESS.");
-} else {
-    if (functionAttempted == "tft.drawJpgUrl" || functionAttempted == "tft.drawPngUrl") {
+    if (success) {
+        Serial.println(functionAttempted + " reported SUCCESS.");
+    } else if (functionAttempted == "tft.drawJpgUrl" || functionAttempted == "tft.drawPngUrl") {
         Serial.println(functionAttempted + " reported FAILURE.");
+        Serial.println("Failure detail: " + failText);
     } else {
         Serial.println("Image drawing skipped/failed due to unknown type.");
+        Serial.println("Failure detail: " + failText);
     }
-    Serial.println("Failure detail: " + failText);
-}
-     Serial.printf("Free RAM after draw: %u bytes\n", ESP.getFreeHeap());
+    Serial.printf("Free RAM after draw: %u bytes\n", ESP.getFreeHeap());
 }
 
-void displayPlayIcon() {
-  int padding = 5;
-  int x = tft.width() - PLAYICON_PX - padding;
-  int y = padding;
-  tft.drawPngUrl(PLAYICON_URL, x, y);
- }
-
-void drawAlbumFailureFallback(int x, int y, String failText) {
-    // Draw failure placeholder
-    int coverSize = 128; // Match the size used elsewhere
-    tft.fillRect(x, y, coverSize, coverSize, TFT_DARKGRAY);
-    tft.setTextColor(TFT_WHITE, TFT_DARKGRAY);
+void displayTrackInfo(String artistName, String songName, String albumName) {
+    tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(1); tft.println("Artist:");
+    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(artistName);
     tft.setTextSize(1);
-    tft.setTextDatum(MC_DATUM); // Middle Center datum
-    tft.drawString(failText, x + coverSize / 2, y + coverSize / 2);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); // Reset text color
-    tft.setTextDatum(TL_DATUM); // Reset datum to Top Left (default)
+    tft.println();
+    
+    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(1); tft.println("Track:");
+    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(songName);
+    tft.setTextSize(1);
+    tft.println();
+
+    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+    tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(1); tft.println("Album:");
+    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(albumName);
+}
+
+void setDisplayActive(bool active) {
+    if (active && !displayActive) {
+        Serial.println("Turning display ON");
+        tft.setBrightness(255);
+        displayActive = true;
+        lastDisplayedArtist = "";
+        lastDisplayedTrack = "";
+    } else if (!active && displayActive) {
+        Serial.println("Turning display OFF");
+        tft.fillScreen(TFT_BLACK);
+        tft.setBrightness(0);
+        displayActive = false;
+    }
 }

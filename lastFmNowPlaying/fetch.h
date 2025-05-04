@@ -1,5 +1,5 @@
-#ifndef HELPERS_H
-#define HELPERS_H
+#ifndef FETCH_H
+#define FETCH_H
 
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -196,11 +196,11 @@ String findFinalImageUrl(const char* initialUrl) {
              // Nie kończymy tutaj, bo getLocation() potrzebuje aktywnego połączenia
         // }
 
-    } // koniec while
+    }
 
     Serial.println("[findFinalUrl] Nie udało się znaleźć ostatecznego URL w ramach limitu przekierowań.");
     if(http.connected()) http.end(); // Na wszelki wypadek
-    return ""; // Zwróć pusty string, jeśli pętla się zakończyła inaczej
+    return "";
 }
 
 #endif
