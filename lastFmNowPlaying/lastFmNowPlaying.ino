@@ -8,6 +8,7 @@
 #include "config.h"
 #include "apiConfig.h"
 #include "helpers.h"
+#include "userSettings.h"
 
 LGFX tft;
 
@@ -142,7 +143,7 @@ void loop() {
         tft.setCursor(10, 10);
         tft.println("WiFi Lost! Reconnecting...");
         // TODO: add WiFi reconnection logic
-        delay(5000); // Wait before potentially retrying in the next loop
+        delay(REFRESH_MS); // Wait before potentially retrying in the next loop
         // TODO: Optionally restart the ESP
         // ESP.restart();
         return; // Skip fetching data if disconnected
@@ -151,10 +152,10 @@ void loop() {
     Serial.println("Refreshing Last.fm data...");
     getNowPlaying();
     Serial.println("Waiting before next refresh...");
-    delay(3000); // Refresh every 3 seconds
+    delay(REFRESH_MS);
 }
 
-void processNowPlaying() {
+void getNowPlaying() {
     Serial.println("\nFetching Now Playing data...");
     String lastFmUrl = String("http://") + LASTFM_HOST + LASTFM_PATH;
 
@@ -280,6 +281,7 @@ String getAlbumCoverUrl(JsonObject track) {
                 Serial.println("Failed to fetch JSON data from CAA.");
                 return albumCoverUrl;
             }
+
                     JsonObject root = doc.as<JsonObject>();
                     if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
                         JsonObject firstImage = root["images"][0];
@@ -306,235 +308,6 @@ String getAlbumCoverUrl(JsonObject track) {
     }
     return albumCoverUrl;
 }
-
-//====================================================================================
-// Get Now Playing Data
-//====================================================================================
-void getNowPlaying() {
-    WiFiClient client; // Create a WiFiClient object for the API request
-
-    Serial.print("Connecting to Last.fm host: ");
-    Serial.println(LASTFM_HOST);
-
-    // Connect to the server
-    if (!client.connect(LASTFM_HOST, LASTFM_PORT)) {
-        Serial.println("Connection to Last.fm failed!");
-        // Avoid filling the whole screen if connection just blips
-        // Consider a small indicator instead? Or just log it.
-        // tft.fillScreen(TFT_ORANGE); ...
-        Serial.println("Error connecting to Last.fm API");
-        return;
-    }
-    Serial.println("Connected to host.");
-
-    // Construct and send the HTTP GET request
-    Serial.print("Requesting URL: ");
-    Serial.println(LASTFM_PATH);
-
-    client.print(String("GET ") + LASTFM_PATH + " HTTP/1.1\r\n" +
-                 "Host: " + LASTFM_HOST + "\r\n" +
-                 "Connection: close\r\n\r\n");
-
-    // --- Wait for response (with timeout) ---
-    unsigned long timeout = millis();
-    while (!client.available() && millis() - timeout < 5000) {
-        delay(10); // Wait for data
-    }
-
-    if (!client.available()) {
-         Serial.println("No response from server!");
-         client.stop();
-         // Avoid filling screen on transient error
-         Serial.println("No response from Last.fm API");
-         return;
-    }
-
-    // --- Read HTTP response ---
-    String statusLine = "";
-    bool headersDone = false;
-    bool httpOk = false;
-    unsigned long headerTimeout = millis(); // Separate timeout for headers
-
-    // Read headers line by line
-    while (client.connected() || client.available()) {
-        if (client.available()) {
-            String line = client.readStringUntil('\n');
-            line.trim(); // Remove \r
-
-            if (statusLine == "") {
-                statusLine = line;
-                Serial.print("Status: ");
-                Serial.println(statusLine);
-                if (statusLine.startsWith("HTTP/1.1 200 OK")) {
-                    httpOk = true;
-                } else {
-                    Serial.println("HTTP Error!");
-                    break; // Exit header reading on error
-                }
-            }
-
-            // An empty line indicates the end of headers
-            if (line.length() == 0) {
-                headersDone = true;
-                break; // Stop reading headers
-            }
-            headerTimeout = millis(); // Reset header timeout while receiving headers
-        } else {
-          delay(10); // Wait if buffer empty but still connected
-        }
-        // Timeout for reading headers specifically
-        if (millis() - headerTimeout > 10000) {
-           Serial.println("Timeout reading headers!");
-           httpOk = false;
-           break;
-        }
-    }
-
-    // --- Process the response body (JSON) ---
-    if (httpOk && headersDone) {
-        Serial.println("Headers received, processing JSON body...");
-
-        // Allocate the JSON document
-        DynamicJsonDocument doc(JSON_BUFFER_SIZE);
-
-        // Parse JSON directly from the client stream (memory efficient)
-        DeserializationError error = deserializeJson(doc, client);
-
-        if (error) {
-            Serial.print("deserializeJson() failed: ");
-            Serial.println(error.c_str());
-            tft.fillScreen(TFT_RED);
-            tft.setTextColor(TFT_WHITE);
-            tft.setTextSize(1);
-            tft.setCursor(10, 10);
-            tft.println("JSON Parsing Error:");
-            tft.print(error.c_str());
-
-        } else {
-            Serial.println("JSON Parsed successfully.");
-
-            // Extract data with checking whether key exist
-            JsonObject recenttracks = doc["recenttracks"];
-            if (!recenttracks.isNull()) {
-                 JsonArray trackArray = recenttracks["track"];
-                 if (!trackArray.isNull() && trackArray.size() > 0) {
-                      JsonObject track = trackArray[0]; // Most recent track
-
-                      // Use .as<String>() for safer extraction
-                      String songName = track["name"].as<String>();
-                      String albumName = track["album"]["#text"].as<String>();
-                      String artistName = track["artist"]["#text"].as<String>();
-
-                      // Check if track changed before redrawing everything
-                      if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
-                          Serial.println("Track has not changed. Skipping redraw.");
-                          client.stop(); // Still need to stop the client
-                          return;
-                      }
-                      // Update last displayed info
-                      lastDisplayedArtist = artistName;
-                      lastDisplayedTrack = songName;
-
-                      albumCoverUrl = getAlbumCoverUrl(track);
-
-                      Serial.println("--- Now Playing ---");
-                      Serial.print("Artist: "); Serial.println(artistName);
-                      Serial.print("Track: "); Serial.println(songName);
-                      Serial.print("Album: "); Serial.println(albumName);
-                      Serial.print("Cover URL: "); Serial.println(albumCoverUrl);
-
-                      // --- Display on TFT ---
-                      tft.startWrite(); // Batch drawing operations for performance
-                      tft.fillScreen(TFT_BLACK); // Clear screen before drawing new info
-
-                      int coverX = 0;
-                      int coverY = 0;
-                      int coverSize = 128; // Example size
-                      int textStartY = 10; // Default start Y for text
-
-                      if (albumCoverUrl != "" && albumCoverUrl.startsWith("http")) {
-                           displayAlbumCover(albumCoverUrl);
-                           textStartY = coverSize;
-                      } else {
-                           Serial.println("No valid album cover URL found.");
-                      }
-
-                      // --- Display Text Info ---
-                      tft.setCursor(10, textStartY);
-
-                      tft.setTextColor(TFT_CYAN, TFT_BLACK); // Artist color
-                      tft.setTextSize(1); // Use LovyanGFX scaling if needed: tft.setTextScale(1);
-                      tft.println("Artist:");
-                      tft.setTextSize(2); // Or tft.setTextScale(2);
-                      tft.setTextColor(TFT_WHITE, TFT_BLACK); // White color for value
-                      tft.println(artistName);
-
-                      tft.println(); // Add some space
-
-                      tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Track color
-                      tft.setTextSize(1);
-                      tft.println("Track:");
-                      tft.setTextSize(2);
-                      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-                      tft.println(songName);
-
-                      tft.println();
-
-                      tft.setTextColor(TFT_GREEN, TFT_BLACK); // Album color
-                      tft.setTextSize(1);
-                      tft.println("Album:");
-                      tft.setTextSize(1);
-                      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-                      tft.println(albumName);
-
-                      tft.endWrite(); // End batch drawing
-
-                 } else {
-                      Serial.println("No tracks found in response.");
-                      // Only update screen if previous state wasn't also "no tracks"
-                      if (lastDisplayedArtist != "" || lastDisplayedTrack != "") {
-                          tft.fillScreen(TFT_BLUE);
-                          tft.setTextColor(TFT_WHITE);
-                          tft.setTextSize(2);
-                          tft.setCursor(10, 10);
-                          tft.println("No recent tracks found.");
-                          lastDisplayedArtist = ""; // Reset state on error
-                          lastDisplayedTrack = "";
-                      }
-                 }
-            } else {
-                 Serial.println("Key 'recenttracks' not found.");
-                 tft.fillScreen(TFT_RED);
-                 tft.setTextColor(TFT_WHITE);
-                 tft.setTextSize(1);
-                 tft.setCursor(10, 10);
-                 tft.println("Error: Invalid JSON structure from Last.fm");
-                 lastDisplayedArtist = ""; // Reset state on error
-                 lastDisplayedTrack = "";
-            }
-        }
-    } else {
-        Serial.println("Failed to get valid HTTP response or headers.");
-         if (!httpOk) {
-             // Display brief error on screen only if HTTP status was bad
-             tft.fillRect(0, tft.height() - 20, tft.width(), 20, TFT_RED); // Error bar at bottom
-             tft.setTextColor(TFT_WHITE, TFT_RED);
-             tft.setTextSize(1);
-             tft.setCursor(5, tft.height() - 15);
-             tft.print("HTTP Error: ");
-             tft.print(statusLine.substring(0, 20));
-             delay(2000);
-         }
-         // Reset state on error
-         lastDisplayedArtist = ""; 
-         lastDisplayedTrack = "";
-    }
-
-    // Disconnect the client
-    Serial.println("Stopping API client.");
-    client.stop();
-}
-
 
 //====================================================================================
 // Display Album Cover
