@@ -49,7 +49,7 @@ void setup() {
     // Configure text defaults
     tft.setTextColor(TFT_WHITE, TFT_BLACK); // Set default text color
     tft.setTextSize(2);                      // Set default text size (adjust scaling if needed)
-    tft.setCursor(10, 10);                   // Set initial cursor position
+    tft.setCursor(0, 0);                   // Set initial cursor position
     tft.println("TFT Initialized (LovyanGFX)."); // Display initial status on TFT
     Serial.println("TFT basics set up.");
 
@@ -64,7 +64,7 @@ void setup() {
 
     int attempts = 0;
     const int maxWifiAttempts = 10; // Define max attempts as a constant
-    tft.setCursor(10, tft.getCursorY() + 5); // Move cursor for dots
+    tft.setCursor(0, tft.height() - 20); // Move cursor for dots
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(1000);
@@ -77,7 +77,7 @@ void setup() {
             tft.fillScreen(TFT_RED); // Use color to indicate error
             tft.setTextColor(TFT_WHITE);
             tft.setTextSize(2);
-            tft.setCursor(10, 10);
+            tft.setCursor(0, 0);
             tft.println("WiFi Failed!");
             Serial.println("Halting execution.");
             while (1) { delay(100); }
@@ -113,7 +113,7 @@ void setup() {
 
     // Display connection success on TFT
     tft.fillScreen(TFT_BLACK); // Clear screen before showing final status
-    tft.setCursor(10, 10);
+    tft.setCursor(0, 0);
     tft.setTextColor(TFT_GREEN, TFT_BLACK); // Green text for success
     tft.println("WiFi Connected!");
     tft.setTextColor(TFT_WHITE, TFT_BLACK); // Back to default color
@@ -126,7 +126,7 @@ void setup() {
     // --- Fetch Initial Data ---
     Serial.println("Fetching Now Playing data...");
     tft.fillScreen(TFT_BLACK); // Clear screen
-    tft.setCursor(10, 10);
+    tft.setCursor(0, 0);
     tft.println("Getting Last.fm data...");
     getNowPlaying(); // Call the function to get data from Last.fm
     Serial.println("Initial data fetch attempt complete.");
@@ -139,7 +139,7 @@ void loop() {
         tft.fillScreen(TFT_RED);
         tft.setTextColor(TFT_WHITE);
         tft.setTextSize(1);
-        tft.setCursor(10, 10);
+        tft.setCursor(0, 0);
         tft.println("WiFi Lost! Reconnecting...");
         // TODO: add WiFi reconnection logic
         delay(REFRESH_MS); // Wait before potentially retrying in the next loop
@@ -252,9 +252,10 @@ void getNowPlaying() {
             Serial.print("Cover URL: "); Serial.println(newAlbumCoverUrl);
 
             tft.startWrite();
-            // tft.fillScreen(TFT_BLACK);
+            tft.fillScreen(TFT_BLACK);
 
-            if (newAlbumCoverUrl != "" && newAlbumCoverUrl != lastDisplayedAlbumCoverUrl) {
+            if (newAlbumCoverUrl != "") {
+                // TODO: newAlbumCoverUrl != lastDisplayedAlbumCoverUrl ?
                 displayAlbumCover(newAlbumCoverUrl);
                 lastDisplayedAlbumCoverUrl = newAlbumCoverUrl;
             } else {
@@ -268,16 +269,16 @@ void getNowPlaying() {
             // Handle display for "no tracks" state
              if (lastDisplayedArtist != "" || lastDisplayedTrack != "") { // Update only if state changes
                 tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(2);
-                tft.setCursor(10, 10); tft.println("No recent tracks found.");
-                lastDisplayedArtist = ""; lastDisplayedTrack = ""; // Reset state
+                tft.setCursor(0, 0); tft.println("No recent tracks found.");
+                lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastDisplayedAlbumCoverUrl = "";
             }
         }
     } else {
         Serial.println("Key 'recenttracks' not found in JSON.");
         // Handle display for invalid JSON structure
         tft.fillScreen(TFT_RED); tft.setTextColor(TFT_WHITE); tft.setTextSize(1);
-        tft.setCursor(10, 10); tft.println("Error: Invalid JSON structure from API");
-        lastDisplayedArtist = ""; lastDisplayedTrack = ""; // Reset state
+        tft.setCursor(0, 0); tft.println("Error: Invalid JSON structure from API");
+        lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastDisplayedAlbumCoverUrl = "";
     }
 }
 
@@ -369,13 +370,17 @@ void displayAlbumCover(String coverUrl) {
         failText = "JPG Failed";
         functionAttempted = "tft.drawJpgUrl";
         Serial.println("Attempting " + functionAttempted + "...");
-        success = tft.drawJpgUrl(coverUrl.c_str(), x, y);
+        int EXPECTED_JPG_COVER_SIZE_PX = 250;
+        float scale = ALBUM_COVER_SIZE_PX / EXPECTED_JPG_COVER_SIZE_PX;
+        success = tft.drawJpgUrl(coverUrl.c_str(), x, y, 0, 0, 0, 0, scale, scale);
 
     } else if (coverUrl.endsWith(".png")) {
         failText = "PNG Failed";
         functionAttempted = "tft.drawPngUrl";
         Serial.println("Attempting " + functionAttempted + "...");
-        success = tft.drawPngUrl(coverUrl.c_str(), x, y);
+        int EXPECTED_PNG_COVER_SIZE_PX = 300;
+        float scale = ALBUM_COVER_SIZE_PX / EXPECTED_PNG_COVER_SIZE_PX;
+        success = tft.drawPngUrl(coverUrl.c_str(), x, y, 0, 0, 0, 0, scale, scale);
 
     } else {
         Serial.println("Unknown image type based on URL: " + coverUrl);
@@ -424,6 +429,7 @@ void setDisplayActive(bool active) {
         displayActive = true;
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
+        lastDisplayedAlbumCoverUrl = "";
     } else if (!active && displayActive) {
         Serial.println("Turning display OFF");
         tft.fillScreen(TFT_BLACK);
