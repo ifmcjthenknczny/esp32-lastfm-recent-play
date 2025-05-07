@@ -64,7 +64,6 @@ void setup() {
 
     int attempts = 0;
     const int maxWifiAttempts = 10; // Define max attempts as a constant
-    tft.setCursor(0, tft.height() - 20); // Move cursor for dots
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(1000);
@@ -360,8 +359,6 @@ void drawAlbumFailureFallback(int x, int y, String failText) {
 void displayAlbumCover(String coverUrl) {
     Serial.printf("Free RAM before draw: %u bytes\n", ESP.getFreeHeap());
 
-    int x = 0; // Top-left X
-    int y = 0; // Top-left Y
     bool success = false;
     String failText = "Load Fail";
     String functionAttempted = "N/A";
@@ -372,7 +369,7 @@ void displayAlbumCover(String coverUrl) {
         Serial.println("Attempting " + functionAttempted + "...");
         int EXPECTED_JPG_COVER_SIZE_PX = 250;
         float scale = ALBUM_COVER_SIZE_PX / EXPECTED_JPG_COVER_SIZE_PX;
-        success = tft.drawJpgUrl(coverUrl.c_str(), x, y, 0, 0, 0, 0, scale, scale);
+        success = tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
 
     } else if (coverUrl.endsWith(".png")) {
         failText = "PNG Failed";
@@ -380,7 +377,7 @@ void displayAlbumCover(String coverUrl) {
         Serial.println("Attempting " + functionAttempted + "...");
         int EXPECTED_PNG_COVER_SIZE_PX = 300;
         float scale = ALBUM_COVER_SIZE_PX / EXPECTED_PNG_COVER_SIZE_PX;
-        success = tft.drawPngUrl(coverUrl.c_str(), x, y, 0, 0, 0, 0, scale, scale);
+        success = tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
 
     } else {
         Serial.println("Unknown image type based on URL: " + coverUrl);
