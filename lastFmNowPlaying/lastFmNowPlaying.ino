@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <U8g2lib.h>
 #include "LGFX.h"
 #include "config.h"
 #include "apiConfig.h"
@@ -11,6 +12,7 @@
 #include "fetch.h"
 
 LGFX tft;
+static const lgfx::U8g2font myPolishFont(u8g2_font_unifont_t_polish);
 
 // --- Global Variables ---
 // To avoid unnecessary redraws if track hasn't changed
@@ -42,13 +44,13 @@ void setup() {
     tft.setRotation(1); // 1 - Vertical rotation, USB-C on the right side
     Serial.println("Rotation set.");
 
-    Serial.println("Filling screen black...");
-    tft.fillScreen(TFT_BLACK); // Clear screen to black immediately after init
-    Serial.println("fillScreen finished.");
+    tft.clear(TFT_BLACK); // Clear screen to black immediately after init
 
     // Configure text defaults
+    // tft.setUTF8Print(true);
+    tft.setFont(&myPolishFont);
     tft.setTextColor(TFT_WHITE, TFT_BLACK); // Set default text color
-    tft.setTextSize(2);                      // Set default text size (adjust scaling if needed)
+    tft.setTextSize(1.25);                      // Set default text size (adjust scaling if needed)
     tft.setCursor(0, 0);                   // Set initial cursor position
     tft.println("TFT Initialized (LovyanGFX)."); // Display initial status on TFT
     Serial.println("TFT basics set up.");
@@ -75,7 +77,7 @@ void setup() {
             Serial.println("\nFailed to connect to WiFi!");
             tft.fillScreen(TFT_RED); // Use color to indicate error
             tft.setTextColor(TFT_WHITE);
-            tft.setTextSize(2);
+            tft.setTextSize(1.25);
             tft.setCursor(0, 0);
             tft.println("WiFi Failed!");
             Serial.println("Halting execution.");
@@ -146,7 +148,7 @@ void loop() {
         // ESP.restart();
         return; // Skip fetching data if disconnected
     }
-
+    Serial.printf("Free RAM: %u bytes\n", ESP.getFreeHeap());
     Serial.println("Refreshing Last.fm data...");
     getNowPlaying();
     Serial.println("Waiting before next refresh...");
@@ -267,7 +269,7 @@ void getNowPlaying() {
             Serial.println("No tracks found in response.");
             // Handle display for "no tracks" state
              if (lastDisplayedArtist != "" || lastDisplayedTrack != "") { // Update only if state changes
-                tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(2);
+                tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(1.25);
                 tft.setCursor(0, 0); tft.println("No recent tracks found.");
                 lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastDisplayedAlbumCoverUrl = "";
             }
@@ -357,8 +359,6 @@ void drawAlbumFailureFallback(int x, int y, String failText) {
 }
 
 void displayAlbumCover(String coverUrl) {
-    Serial.printf("Free RAM before draw: %u bytes\n", ESP.getFreeHeap());
-
     bool success = false;
     String failText = "Load Fail";
     String functionAttempted = "N/A";
@@ -395,28 +395,33 @@ void displayAlbumCover(String coverUrl) {
         Serial.println("Image drawing skipped/failed due to unknown type.");
         Serial.println("Failure detail: " + failText);
     }
-    Serial.printf("Free RAM after draw: %u bytes\n", ESP.getFreeHeap());
 }
 
 void displayTrackInfo(String artistName, String songName, String albumName) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
-    tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(1); tft.println("Artist:");
+    tft.setFont(&fonts::Font0);
+    tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Artist:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(artistName);
-    tft.setTextSize(1);
+    tft.setFont(&myPolishFont);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(artistName);
+    tft.setTextSize(TRACK_INFO_SPACE_SIZE);
     tft.println();
     
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(1); tft.println("Track:");
+    tft.setFont(&fonts::Font0);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Track:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(songName);
-    tft.setTextSize(1);
+    tft.setFont(&myPolishFont);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(songName);
+    tft.setTextSize(TRACK_INFO_SPACE_SIZE);
     tft.println();
 
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(1); tft.println("Album:");
+    tft.setFont(&fonts::Font0);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Album:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(2); tft.println(albumName);
+    tft.setFont(&myPolishFont);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(albumName);
 }
 
 void setDisplayActive(bool active) {
@@ -429,7 +434,8 @@ void setDisplayActive(bool active) {
         lastDisplayedAlbumCoverUrl = "";
     } else if (!active && displayActive) {
         Serial.println("Turning display OFF");
-        tft.fillScreen(TFT_BLACK);
+        // tft.fillScreen(TFT_BLACK);
+        tft.clear(TFT_BLACK);
         tft.setBrightness(0);
         displayActive = false;
     }
