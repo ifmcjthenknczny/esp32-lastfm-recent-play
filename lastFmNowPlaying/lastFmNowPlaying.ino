@@ -27,15 +27,16 @@ void getNowPlaying();
 void displayAlbumCover(String coverUrl);
 void setDisplayActive(bool active);
 
-void setup() {
-    // --- Initialize serial monitor ---
+void initSerialMonitor () {
     Serial.begin(115200);
     unsigned long serialStart = millis();
-    while (!Serial && millis() - serialStart < 2000) { // Wait max 2 seconds for serial
+    while (!Serial && millis() - serialStart < 2000) {
+        // Wait max 2 seconds for serial
          delay(10);
     }
+}
 
-    // --- Initialize TFT Display using LovyanGFX ---
+void initDisplay() {
     Serial.println("Initializing TFT with LovyanGFX...");
     tft.init();
     Serial.println("tft.init() finished.");
@@ -46,9 +47,7 @@ void setup() {
 
     tft.clear(TFT_BLACK);
 
-    // Configure text defaults
-    // tft.setUTF8Print(true);
-    tft.setFont(&myPolishFont);
+    tft.setFont(&myExtendedFont);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(1.25);
     tft.setCursor(0, 0);
@@ -58,14 +57,14 @@ void setup() {
     String freeRamStr = "Free RAM: " + String(ESP.getFreeHeap()) + " bytes";
     tft.println(freeRamStr);
     Serial.println("TFT basics set up.");
+}
 
-    // --- Connect to Wi-Fi ---
+void connectToWifi() {
     Serial.print("Connecting to WiFi SSID: ");
     Serial.println(WIFI_SSID);
     tft.println("Connecting to WiFi...");
     tft.print(WIFI_SSID);
 
-    // Begin WiFi connection
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     int attempts = 0;
@@ -89,17 +88,25 @@ void setup() {
         }
     }
 
-    // --- WiFi Connected Successfully ---
     Serial.println("\nConnected to Wi-Fi!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(0, 0);
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.println("WiFi Connected!");
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.print("IP: ");
+    tft.println(WiFi.localIP());
+}
 
-    // --- Add NTP Time Synchronization ---
+void synchronizeTime() {
     Serial.println("Configuring time using NTP...");
     configTzTime("CET-1CEST,M3.5.0,M10.5.0/3", "pool.ntp.org", "europe.pool.ntp.org");
     Serial.print("Waiting for NTP time sync");
     time_t now = time(nullptr);
-    while (now < 8 * 3600 * 2) { // Wait until time is reasonably beyond epoch (e.g., > 16 hours)
+    // Wait until time is reasonably beyond epoch (e.g., > 16 hours)
+    while (now < 8 * 3600 * 2) {
         delay(500);
         Serial.print(".");
         now = time(nullptr);
@@ -113,27 +120,25 @@ void setup() {
     } else {
         Serial.println("Failed to obtain local time");
     }
-
     lastActivityTime = now;
+}
 
-    // Display connection success on TFT
-    tft.fillScreen(TFT_BLACK);
-    tft.setCursor(0, 0);
-    tft.setTextColor(TFT_GREEN, TFT_BLACK);
-    tft.println("WiFi Connected!");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.print("IP: ");
-    tft.println(WiFi.localIP());
-
-    delay(1000);
-
-    // --- Fetch Initial Data ---
+void fetchInitialData() {
     Serial.println("Fetching Now Playing data...");
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.println("Getting Last.fm data...");
     getNowPlaying();
     Serial.println("Initial data fetch attempt complete.");
+}
+
+void setup() {
+    initSerialMonitor();
+    initDisplay();
+    connectToWifi();
+    synchronizeTime();
+    delay(1000);
+    fetchInitialData();
 }
 
 void loop() {
@@ -145,20 +150,14 @@ void loop() {
         tft.setCursor(0, 0);
         tft.println("WiFi Lost! Reconnecting...");
         // TODO: add WiFi reconnection logic
-        delay(REFRESH_MS); // Wait before potentially retrying in the next loop
-        // TODO: Optionally restart the ESP
-        // ESP.restart();
         return; // Skip fetching data if disconnected
     }
-    Serial.printf("Free RAM: %u bytes\n", ESP.getFreeHeap());
+    Serial.printf("Free RAM: %u bytes\n", ESP.getFreeHeap()); // Track free RAM
     Serial.println("Refreshing Last.fm data...");
     getNowPlaying();
     Serial.println("Waiting before next refresh...");
     delay(REFRESH_MS);
 }
-
-
-
 
 void getNowPlaying() {
     Serial.println("\nFetching Now Playing data...");
@@ -230,7 +229,6 @@ void getNowPlaying() {
             String albumName = track["album"]["#text"] | "Unknown Album";
             String artistName = track["artist"]["#text"] | "Unknown Artist";
 
-            // Check if track changed before redrawing everything
             // IMPORTANT! DO NOT ERASE OR WILL GIVE HIGHER AWS COSTS ON JPG CONVERTER
             // TODO: lastDisplayedAlbumCoverUrl.length() > 0
             if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
@@ -259,7 +257,6 @@ void getNowPlaying() {
             } else {
                 Serial.println("No valid album cover URL found.");
             }
-
             displayTrackInfo(artistName, songName, albumName);
             tft.endWrite();
         } else {
@@ -310,69 +307,35 @@ void displayPlayIcon() {
 }
 
 void displayAlbumCover(String coverUrl) {
-    bool success = false;
-    String failText = "Load Fail";
-    String functionAttempted = "N/A";
     float scale = calculateAlbumCoverScale(coverUrl);
-
     if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith("https://playing-now-album-covers.s3.eu-central-1.amazonaws.com")) {
-        failText = "JPG Failed";
-        functionAttempted = "tft.drawJpgUrl";
-        Serial.println("Attempting " + functionAttempted + "...");
-        success = tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
-
+        Serial.println("Attempting drawJpgUrl...");
+        tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
     } else if (coverUrl.endsWith(".png")) {
-        failText = "PNG Failed";
-        functionAttempted = "tft.drawPngUrl";
-        Serial.println("Attempting " + functionAttempted + "...");
-        success = tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
-
+        Serial.println("Attempting drawPngUrl...");
+        tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
     } else {
         Serial.println("Unknown image type based on URL: " + coverUrl);
-        failText = "Type Failed";
-        functionAttempted = "No draw function applicable";
-        success = false;
-    }
-
-    if (success) {
-        Serial.println(functionAttempted + " reported SUCCESS.");
-    } else if (functionAttempted == "tft.drawJpgUrl" || functionAttempted == "tft.drawPngUrl") {
-        Serial.println(functionAttempted + " reported FAILURE.");
-        Serial.println("Failure detail: " + failText);
-    } else {
-        Serial.println("Image drawing skipped/failed due to unknown type.");
-        Serial.println("Failure detail: " + failText);
     }
 }
 
-void displayTrackInfo(String artistName, String songName, String albumName) {
-    String trimmedArtist = trimLongTrackInfo(artistName);
-    tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
+void displayTrackInfoBlock(String label, String info, int labelColor) {
+    String trimmedInfo = adjustTrackInfo(info);
     tft.setFont(&fonts::Font0);
-    tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Artist:");
+    tft.setTextColor(labelColor, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println(label + ":");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedArtist);
-    tft.setTextSize(TRACK_INFO_SPACE_SIZE);
-    tft.println();
-    
-    String trimmedTrack = trimLongTrackInfo(songName);
-    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setFont(&fonts::Font0);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Track:");
-    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedTrack);
-    tft.setTextSize(TRACK_INFO_SPACE_SIZE);
-    tft.println();
+    tft.setFont(&myExtendedFont);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedInfo);
+    tft.setTextSize(TRACK_INFO_SPACE_SIZE); tft.println();
+}
 
-    String trimmedAlbum = trimLongTrackInfo(albumName);
+void displayTrackInfo(String artistName, String songName, String albumName) {
+    tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
+    displayTrackInfoBlock("Artist", artistName, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setFont(&fonts::Font0);
-    tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Album:");
+    displayTrackInfoBlock("Track", songName, TFT_YELLOW);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedAlbum);
+    displayTrackInfoBlock("Album", albumName, TFT_CYAN);
 }
 
 void setDisplayActive(bool active) {

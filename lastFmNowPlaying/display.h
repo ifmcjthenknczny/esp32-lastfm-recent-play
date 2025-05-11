@@ -1,9 +1,15 @@
 #include "userSettings.h"
-#include "LGFX.h"
 
-const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - 3;
+const int ELLIPSIS_LEN = 3;
+const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LEN;
 
-String trimLongTrackInfo(String label) {
+String adjustTrackInfo(String label) {
+    label.replace("’", "'");
+    label.replace("“", "\"");
+    label.replace("”", "\"");
+    label.replace("…", "...");
+    label.replace("–", "-");
+    label.replace("—", "-");
     if (label.length() > MAX_CHARS_IN_LINE) {
         return label.substring(0, MAX_STRING_LENGTH) + "...";
     }
