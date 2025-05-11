@@ -10,6 +10,7 @@
 #include "apiConfig.h"
 #include "userSettings.h"
 #include "fetch.h"
+#include "display.h"
 
 LGFX tft;
 
@@ -230,6 +231,8 @@ void getNowPlaying() {
             String artistName = track["artist"]["#text"] | "Unknown Artist";
 
             // Check if track changed before redrawing everything
+            // IMPORTANT! DO NOT ERASE OR WILL GIVE HIGHER AWS COSTS ON JPG CONVERTER
+            // TODO: lastDisplayedAlbumCoverUrl.length() > 0
             if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
                 Serial.println("Track has not changed. Skipping redraw.");
                 return;
@@ -278,59 +281,24 @@ void getNowPlaying() {
 }
 
 String getAlbumCoverUrl(JsonObject track) {
-    String albumCoverUrl = "";
     JsonArray images = track["image"];
     bool isPng = images[0]["#text"].as<String>().endsWith(".png");
+    String albumCoverUrl = getSuitableAlbumCoverUrlFromLastFmApi(images);
 
     if (!images.isNull() && isPng) {
-        // Prefer the largest
         Serial.println("Getting album cover url from last.fm API response...");
-        if (images.size() > 3) albumCoverUrl = images[3]["#text"].as<String>(); // Try extralarge
-        else if (images.size() > 2) albumCoverUrl = images[2]["#text"].as<String>(); // Try large
-        else if (images.size() > 1) albumCoverUrl = images[1]["#text"].as<String>(); // Fallback to medium
-        else albumCoverUrl = images[0]["#text"].as<String>();
-    }
-    else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
-        Serial.println("Trying to getting album cover url from cover album art API response...");
-        String mbid = track["album"]["mbid"].as<String>();
-
-        if (mbid.length() > 0) {
-            String albumApiPath = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
-
-            WiFiClientSecure client;
-            HTTPClient httpClient;
-
-            Serial.println("Fetching from CAA: " + albumApiPath);
-
-            DynamicJsonDocument doc = fetchJson(albumApiPath.c_str());
-
-            if (doc.isNull()) {
-                Serial.println("Failed to fetch JSON data from CAA.");
-                return albumCoverUrl;
-            }
-            JsonObject root = doc.as<JsonObject>();
-            if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
-                JsonObject firstImage = root["images"][0];
-                String initialCoverUrl = "";
-                if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
-                    initialCoverUrl = firstImage["thumbnails"]["small"].as<String>();
-                    albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
-                    Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
-                } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
-                    initialCoverUrl = firstImage["thumbnails"]["250"].as<String>();
-                    albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
-                    Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
-                } else {
-                    Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
-                }
-            } else {
-                Serial.println("CAA JSON response missing 'images' array or it's empty.");
-            }
-        } else {
-            Serial.println("Album MBID is present but empty.");
+        return albumCoverUrl;
+    } else if (JPG_CONVERTER_URL && !images.isNull() && !isPng) {
+        String mbid = "";
+        if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
+            mbid = track["album"]["mbid"].as<String>();
         }
+        albumCoverUrl = getConvertedImageUrl(albumCoverUrl, mbid);
+    } else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
+        String mbid = track["album"]["mbid"].as<String>();
+        albumCoverUrl = getMusicbrainzImageUrl(mbid);
     } else {
-        Serial.println("Track JSON missing 'album.mbid' needed for Cover Art Archive lookup.");
+        Serial.println("Fetching cover album image have not worked.");
     }
     return albumCoverUrl;
 }
@@ -345,21 +313,18 @@ void displayAlbumCover(String coverUrl) {
     bool success = false;
     String failText = "Load Fail";
     String functionAttempted = "N/A";
+    float scale = calculateAlbumCoverScale(coverUrl);
 
-    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith("https://playing-now-album-covers.s3.eu-central-1.amazonaws.com")) {
         failText = "JPG Failed";
         functionAttempted = "tft.drawJpgUrl";
         Serial.println("Attempting " + functionAttempted + "...");
-        int EXPECTED_JPG_COVER_SIZE_PX = 250;
-        float scale = ALBUM_COVER_SIZE_PX / EXPECTED_JPG_COVER_SIZE_PX;
         success = tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
 
     } else if (coverUrl.endsWith(".png")) {
         failText = "PNG Failed";
         functionAttempted = "tft.drawPngUrl";
         Serial.println("Attempting " + functionAttempted + "...");
-        int EXPECTED_PNG_COVER_SIZE_PX = 300;
-        float scale = ALBUM_COVER_SIZE_PX / EXPECTED_PNG_COVER_SIZE_PX;
         success = tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
 
     } else {
@@ -381,30 +346,33 @@ void displayAlbumCover(String coverUrl) {
 }
 
 void displayTrackInfo(String artistName, String songName, String albumName) {
+    String trimmedArtist = trimLongTrackInfo(artistName);
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
     tft.setFont(&fonts::Font0);
     tft.setTextColor(TFT_CYAN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Artist:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(artistName);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedArtist);
     tft.setTextSize(TRACK_INFO_SPACE_SIZE);
     tft.println();
     
+    String trimmedTrack = trimLongTrackInfo(songName);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     tft.setFont(&fonts::Font0);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Track:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(songName);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedTrack);
     tft.setTextSize(TRACK_INFO_SPACE_SIZE);
     tft.println();
 
+    String trimmedAlbum = trimLongTrackInfo(albumName);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     tft.setFont(&fonts::Font0);
     tft.setTextColor(TFT_GREEN, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println("Album:");
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(albumName);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK); tft.setTextSize(TRACK_INFO_TEXT_SIZE); tft.println(trimmedAlbum);
 }
 
 void setDisplayActive(bool active) {

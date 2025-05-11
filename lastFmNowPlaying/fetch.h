@@ -203,4 +203,100 @@ String findFinalImageUrl(const char* initialUrl) {
     return "";
 }
 
+String getConvertedImageUrl(String imageUrl, String mbid = "") {
+  Serial.println("Trying to get album cover url from API coverting progressive JPG to baseline JPG...");
+  String responseUrl = "";
+  const int jsonCapacity = 1024;
+  StaticJsonDocument<jsonCapacity> jsonDoc;
+  jsonDoc["imageUrl"] = imageUrl;
+
+  if (mbid != NULL && mbid.length() > 0) {
+    jsonDoc["mbid"] = mbid;
+  }
+
+  String requestBody;
+  serializeJson(jsonDoc, requestBody);
+
+//   String serverUrl = JPG_CONVERTER_URL + ":443";
+  String serverUrl = JPG_CONVERTER_URL;
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    if (http.begin(serverUrl)) {
+      http.addHeader("Content-Type", "application/json");
+      http.addHeader("x-api-key", JPG_CONVERTER_URL_API_KEY);
+      http.addHeader("Connection", "close");
+
+      int httpCode = http.POST(requestBody);
+      
+      if (httpCode > 0) {
+        String responsePayload = http.getString();
+        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
+          responseUrl = responsePayload;
+        } else {
+          Serial.println("Error: Server responded with HTTP code " + String(httpCode));
+          Serial.println("Response: " + responsePayload);
+        }
+      } else {
+        Serial.println("Error on POST request. HTTP Code: " + String(httpCode) + ", Error: " + http.errorToString(httpCode).c_str());
+      }
+      http.end();
+    } else {
+      Serial.println("Error: http.begin() failed. Could not connect to server.");
+    }
+  } else {
+    Serial.println("Error: WiFi not connected.");
+  }
+  return responseUrl;
+}
+
+String getMusicbrainzImageUrl(String mbid = "") {
+    String albumCoverUrl = "";
+    Serial.println("Trying to get album cover url from cover album art API...");
+    String albumApiPath = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
+
+    HTTPClient httpClient;
+
+    Serial.println("Fetching from CAA: " + albumApiPath);
+
+    DynamicJsonDocument doc = fetchJson(albumApiPath.c_str());
+
+    if (doc.isNull()) {
+        Serial.println("Failed to fetch JSON data from CAA.");
+        return albumCoverUrl;
+    }
+    JsonObject root = doc.as<JsonObject>();
+    if (root.containsKey("images") && root["images"].is<JsonArray>() && root["images"].size() > 0) {
+        JsonObject firstImage = root["images"][0];
+        String initialCoverUrl = "";
+        if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("small")) {
+            initialCoverUrl = firstImage["thumbnails"]["small"].as<String>();
+            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
+            Serial.println("Found CAA thumbnail URL: " + albumCoverUrl);
+        } else if (firstImage.containsKey("thumbnails") && firstImage["thumbnails"].is<JsonObject>() && firstImage["thumbnails"].containsKey("250")) { // Example fallback
+            initialCoverUrl = firstImage["thumbnails"]["250"].as<String>();
+            albumCoverUrl = findFinalImageUrl(initialCoverUrl.c_str());
+            Serial.println("Found CAA thumbnail URL (250px): " + albumCoverUrl);
+        } else {
+            Serial.println("CAA JSON response missing 'images[0].thumbnails.small' or '.250'");
+        }
+    } else {
+        Serial.println("CAA JSON response missing 'images' array or it's empty.");
+    }
+}
+
+String getSuitableAlbumCoverUrlFromLastFmApi(JsonArray images) {
+    String albumCoverUrl = "";
+    if (images.isNull()) {
+        return albumCoverUrl;
+    }
+    // Prefer the largest
+    if (images.size() > 3) albumCoverUrl = images[3]["#text"].as<String>(); // Try extralarge
+    else if (images.size() > 2) albumCoverUrl = images[2]["#text"].as<String>(); // Try large
+    else if (images.size() > 1) albumCoverUrl = images[1]["#text"].as<String>(); // Fallback to medium
+    else albumCoverUrl = images[0]["#text"].as<String>();
+    return albumCoverUrl;
+}
+
 #endif

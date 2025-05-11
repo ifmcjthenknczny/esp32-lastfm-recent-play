@@ -15,7 +15,7 @@ String coverAlbumPath(String mbid) {
 
 const size_t JSON_BUFFER_SIZE = 2048;
 
-const int PLAYICON_PX = 32;
-const char* PLAYICON_URL = "https://i.ibb.co/8gCRqqds/output-onlinepngtools.png";
+const int PLAYICON_PX = 24;
+const char* PLAYICON_URL = "https://i.ibb.co/204LYysN/playnow-small.png";
 
 #endif
