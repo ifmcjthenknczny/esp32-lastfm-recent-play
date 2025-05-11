@@ -5,6 +5,8 @@
 #include <HTTPClient.h> // this lib needs to be before LovyanGFX, otherwise drawJpgUrl and drawPngUrl is unusable
 #include <LovyanGFX.hpp>
 
+static const lgfx::U8g2font myPolishFont(u8g2_font_unifont_t_polish);
+
 class LGFX : public lgfx::LGFX_Device
 {
     lgfx::Panel_ST7789 _panel_instance; // ST7789 panel

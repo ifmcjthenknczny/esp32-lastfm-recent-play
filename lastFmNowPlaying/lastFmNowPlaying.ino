@@ -12,7 +12,6 @@
 #include "fetch.h"
 
 LGFX tft;
-static const lgfx::U8g2font myPolishFont(u8g2_font_unifont_t_polish);
 
 // --- Global Variables ---
 // To avoid unnecessary redraws if track hasn't changed
@@ -44,28 +43,32 @@ void setup() {
     tft.setRotation(1); // 1 - Vertical rotation, USB-C on the right side
     Serial.println("Rotation set.");
 
-    tft.clear(TFT_BLACK); // Clear screen to black immediately after init
+    tft.clear(TFT_BLACK);
 
     // Configure text defaults
     // tft.setUTF8Print(true);
     tft.setFont(&myPolishFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); // Set default text color
-    tft.setTextSize(1.25);                      // Set default text size (adjust scaling if needed)
-    tft.setCursor(0, 0);                   // Set initial cursor position
-    tft.println("TFT Initialized (LovyanGFX)."); // Display initial status on TFT
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(1.25);
+    tft.setCursor(0, 0);
+    tft.println("TFT Initialized (LovyanGFX).");
+    String cpuFreqStr = "CPU Frequency: " + String(ESP.getCpuFreqMHz()) + " MHz";
+    tft.println(cpuFreqStr);
+    String freeRamStr = "Free RAM: " + String(ESP.getFreeHeap()) + " bytes";
+    tft.println(freeRamStr);
     Serial.println("TFT basics set up.");
 
     // --- Connect to Wi-Fi ---
     Serial.print("Connecting to WiFi SSID: ");
     Serial.println(WIFI_SSID);
     tft.println("Connecting to WiFi...");
-    tft.print(WIFI_SSID);                  // Show SSID on TFT
+    tft.print(WIFI_SSID);
 
     // Begin WiFi connection
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     int attempts = 0;
-    const int maxWifiAttempts = 10; // Define max attempts as a constant
+    const int maxWifiAttempts = 10;
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(1000);
@@ -75,7 +78,7 @@ void setup() {
 
         if (attempts >= maxWifiAttempts) {
             Serial.println("\nFailed to connect to WiFi!");
-            tft.fillScreen(TFT_RED); // Use color to indicate error
+            tft.fillScreen(TFT_RED);
             tft.setTextColor(TFT_WHITE);
             tft.setTextSize(1.25);
             tft.setCursor(0, 0);
@@ -103,9 +106,9 @@ void setup() {
     Serial.println("\nTime synchronized!");
 
     struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) { // Use getLocalTime after configTzTime
+    if (getLocalTime(&timeinfo)) {
         Serial.print("Current local time: ");
-        Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S (%Z %z)"); // Print formatted time
+        Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S (%Z %z)");
     } else {
         Serial.println("Failed to obtain local time");
     }
@@ -113,28 +116,26 @@ void setup() {
     lastActivityTime = now;
 
     // Display connection success on TFT
-    tft.fillScreen(TFT_BLACK); // Clear screen before showing final status
+    tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
-    tft.setTextColor(TFT_GREEN, TFT_BLACK); // Green text for success
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.println("WiFi Connected!");
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); // Back to default color
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.print("IP: ");
     tft.println(WiFi.localIP());
 
-    Serial.println("Waiting briefly...");
-    delay(2000); // Show connection info briefly on TFT
+    delay(1000);
 
     // --- Fetch Initial Data ---
     Serial.println("Fetching Now Playing data...");
-    tft.fillScreen(TFT_BLACK); // Clear screen
+    tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.println("Getting Last.fm data...");
-    getNowPlaying(); // Call the function to get data from Last.fm
+    getNowPlaying();
     Serial.println("Initial data fetch attempt complete.");
 }
 
 void loop() {
-    // Check WiFi status periodically
     if(WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi disconnected! Attempting to reconnect...");
         tft.fillScreen(TFT_RED);
@@ -158,8 +159,6 @@ void loop() {
 
 
 
-
-
 void getNowPlaying() {
     Serial.println("\nFetching Now Playing data...");
     String lastFmUrl = String("http://") + LASTFM_HOST + LASTFM_PATH;
@@ -169,9 +168,6 @@ void getNowPlaying() {
     // Check if the fetch and parse was successful
     if (doc.isNull()) {
         Serial.println("Failed to fetch or parse JSON data.");
-        // Optional: Display error on TFT
-        // tft.fillScreen(TFT_RED); ...
-        // Reset state if needed
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
         return;
@@ -179,7 +175,6 @@ void getNowPlaying() {
 
     Serial.println("JSON Received and Parsed. Extracting data...");
 
-    // Now, safely extract data from the VALID document
     JsonObject recenttracks = doc["recenttracks"];
     if (!recenttracks.isNull()) {
         JsonArray trackArray = recenttracks["track"];
@@ -230,8 +225,7 @@ void getNowPlaying() {
 
             Serial.println("Display is ON, proceeding with drawing...");
 
-            // Use .as<String>() for safer extraction
-            String songName = track["name"] | "Unknown Track"; // Default value if key missing
+            String songName = track["name"] | "Unknown Track";
             String albumName = track["album"]["#text"] | "Unknown Album";
             String artistName = track["artist"]["#text"] | "Unknown Artist";
 
@@ -240,7 +234,7 @@ void getNowPlaying() {
                 Serial.println("Track has not changed. Skipping redraw.");
                 return;
             }
-            // Update last displayed info
+
             lastDisplayedArtist = artistName;
             lastDisplayedTrack = songName;
 
@@ -342,20 +336,9 @@ String getAlbumCoverUrl(JsonObject track) {
 }
 
 void displayPlayIcon() {
-  int x = tft.width() - PLAYICON_PX - PLAYICON_PADDING_PX;
+  int x = SCREEN_WIDTH_PX - PLAYICON_PX - PLAYICON_PADDING_PX;
   int y = PLAYICON_PADDING_PX;
   tft.drawPngUrl(PLAYICON_URL, x, y);
-}
-
-void drawAlbumFailureFallback(int x, int y, String failText) {
-    // Draw failure placeholder
-    tft.fillRect(x, y, ALBUM_COVER_SIZE_PX, ALBUM_COVER_SIZE_PX, TFT_DARKGRAY);
-    tft.setTextColor(TFT_WHITE, TFT_DARKGRAY);
-    tft.setTextSize(1);
-    tft.setTextDatum(MC_DATUM); // Middle Center datum
-    tft.drawString(failText, x + ALBUM_COVER_SIZE_PX / 2, y + ALBUM_COVER_SIZE_PX / 2);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK); // Reset text color
-    tft.setTextDatum(TL_DATUM); // Reset datum to Top Left (default)
 }
 
 void displayAlbumCover(String coverUrl) {
@@ -434,7 +417,6 @@ void setDisplayActive(bool active) {
         lastDisplayedAlbumCoverUrl = "";
     } else if (!active && displayActive) {
         Serial.println("Turning display OFF");
-        // tft.fillScreen(TFT_BLACK);
         tft.clear(TFT_BLACK);
         tft.setBrightness(0);
         displayActive = false;
