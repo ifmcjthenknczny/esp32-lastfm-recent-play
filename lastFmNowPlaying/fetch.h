@@ -173,7 +173,7 @@ String findFinalImageUrl(const char* initialUrl) {
     return "";
 }
 
-String getConvertedImageUrl(String imageUrl, String mbid = "") {
+String getConvertedImageUrl(String imageUrl, String mbid = "", String artist = "", String album = "") {
   Serial.println("Trying to get album cover url from API coverting progressive JPG to baseline JPG...");
   String responseUrl = "";
   const int jsonCapacity = 1024;
@@ -182,6 +182,12 @@ String getConvertedImageUrl(String imageUrl, String mbid = "") {
 
   if (mbid != NULL && mbid.length() > 0) {
     jsonDoc["mbid"] = mbid;
+  }
+  if (artist != NULL && artist.length() > 0) {
+    jsonDoc["artist"] = artist;
+  }
+  if (album != NULL && album.length() > 0) {
+    jsonDoc["album"] = album;
   }
 
   String requestBody;

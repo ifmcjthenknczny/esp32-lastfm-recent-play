@@ -287,10 +287,20 @@ String getAlbumCoverUrl(JsonObject track) {
         return albumCoverUrl;
     } else if (JPG_CONVERTER_URL && !images.isNull() && !isPng) {
         String mbid = "";
-        if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
-            mbid = track["album"]["mbid"].as<String>();
+        String artist = "";
+        String album = "";
+        if (track.containsKey("album") && track["album"].is<JsonObject>()) {
+            if (track["album"].containsKey("mbid")) {
+                mbid = track["album"]["mbid"].as<String>();
+            }
+            if (track["album"].containsKey("#text")) {
+                album = track["album"]["#text"].as<String>();
+            }
         }
-        albumCoverUrl = getConvertedImageUrl(albumCoverUrl, mbid);
+        if (track.containsKey("artist") && track["artist"].is<JsonObject>() && track["artist"].containsKey("#text")) {
+            artist = track["artist"]["#text"].as<String>();
+        }
+        albumCoverUrl = getConvertedImageUrl(albumCoverUrl, mbid, artist, album);
     } else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
         String mbid = track["album"]["mbid"].as<String>();
         albumCoverUrl = getMusicbrainzImageUrl(mbid);
@@ -308,7 +318,7 @@ void displayPlayIcon() {
 
 void displayAlbumCover(String coverUrl) {
     float scale = calculateAlbumCoverScale(coverUrl);
-    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith("https://playing-now-album-covers.s3.eu-central-1.amazonaws.com")) {
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
         Serial.println("Attempting drawJpgUrl...");
         tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
     } else if (coverUrl.endsWith(".png")) {
