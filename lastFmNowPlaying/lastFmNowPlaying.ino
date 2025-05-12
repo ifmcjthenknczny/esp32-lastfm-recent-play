@@ -16,7 +16,7 @@ LGFX tft;
 
 // --- Global Variables ---
 // To avoid unnecessary redraws if track hasn't changed
-String lastDisplayedAlbumCoverUrl = "";
+String lastFetchedAlbumCoverUrl = "";
 String lastDisplayedArtist = ""; 
 String lastDisplayedTrack = "";
 bool displayActive = true;
@@ -127,7 +127,7 @@ void fetchInitialData() {
     Serial.println("Fetching Now Playing data...");
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
-    tft.println("Getting Last.fm data...");
+    // tft.println("Getting Last.fm data...");
     getNowPlaying();
     Serial.println("Initial data fetch attempt complete.");
 }
@@ -168,8 +168,6 @@ void getNowPlaying() {
     // Check if the fetch and parse was successful
     if (doc.isNull()) {
         Serial.println("Failed to fetch or parse JSON data.");
-        lastDisplayedArtist = "";
-        lastDisplayedTrack = "";
         return;
     }
 
@@ -228,36 +226,38 @@ void getNowPlaying() {
             String songName = track["name"] | "Unknown Track";
             String albumName = track["album"]["#text"] | "Unknown Album";
             String artistName = track["artist"]["#text"] | "Unknown Artist";
+            String lastFmAlbumCoverUrl = getSuitableAlbumCoverUrlFromLastFmApi(track["image"]);
 
             // IMPORTANT! DO NOT ERASE OR WILL GIVE HIGHER AWS COSTS ON JPG CONVERTER
-            // TODO: lastDisplayedAlbumCoverUrl.length() > 0
             if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
                 Serial.println("Track has not changed. Skipping redraw.");
                 return;
             }
 
-            lastDisplayedArtist = artistName;
-            lastDisplayedTrack = songName;
-
-            String newAlbumCoverUrl = getAlbumCoverUrl(track);
+            tft.startWrite();
+            // tft.fillScreen(TFT_BLACK);
 
             Serial.println("--- Now Playing ---");
             Serial.print("Artist: "); Serial.println(artistName);
             Serial.print("Track: "); Serial.println(songName);
             Serial.print("Album: "); Serial.println(albumName);
+
+            Serial.print("Current fetched album cover URL: "); Serial.println(lastFmAlbumCoverUrl);
+            Serial.print("Previously fetched album cover URL: "); Serial.println(lastFetchedAlbumCoverUrl);
+
+            // Only redraw album if needed
+            // if (lastFmAlbumCoverUrl != lastFetchedAlbumCoverUrl || songName.length() < lastDisplayedTrack.length()) {
+            String newAlbumCoverUrl = getAlbumCoverUrl(track);
             Serial.print("Cover URL: "); Serial.println(newAlbumCoverUrl);
-
-            tft.startWrite();
-            tft.fillScreen(TFT_BLACK);
-
-            if (newAlbumCoverUrl != "") {
-                // TODO: newAlbumCoverUrl != lastDisplayedAlbumCoverUrl ?
-                displayAlbumCover(newAlbumCoverUrl);
-                lastDisplayedAlbumCoverUrl = newAlbumCoverUrl;
-            } else {
-                Serial.println("No valid album cover URL found.");
-            }
+            displayAlbumCover(newAlbumCoverUrl);
+            lastFetchedAlbumCoverUrl = lastFmAlbumCoverUrl;
+            // } else {
+            //     Serial.println("Album cover has not changed, skipping album redraw.");
+            // }
             displayTrackInfo(artistName, songName, albumName);
+            lastDisplayedArtist = artistName;
+            lastDisplayedTrack = songName;
+
             tft.endWrite();
         } else {
             Serial.println("No tracks found in response.");
@@ -265,7 +265,7 @@ void getNowPlaying() {
              if (lastDisplayedArtist != "" || lastDisplayedTrack != "") { // Update only if state changes
                 tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(1.25);
                 tft.setCursor(0, 0); tft.println("No recent tracks found.");
-                lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastDisplayedAlbumCoverUrl = "";
+                lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastFetchedAlbumCoverUrl = "";
             }
         }
     } else {
@@ -273,7 +273,7 @@ void getNowPlaying() {
         // Handle display for invalid JSON structure
         tft.fillScreen(TFT_RED); tft.setTextColor(TFT_WHITE); tft.setTextSize(1);
         tft.setCursor(0, 0); tft.println("Error: Invalid JSON structure from API");
-        lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastDisplayedAlbumCoverUrl = "";
+        lastDisplayedArtist = ""; lastDisplayedTrack = ""; lastFetchedAlbumCoverUrl = "";
     }
 }
 
@@ -343,7 +343,7 @@ void displayTrackInfo(String artistName, String songName, String albumName) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
     displayTrackInfoBlock("Artist", artistName, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    displayTrackInfoBlock("Track", songName, TFT_YELLOW);
+    displayTrackInfoBlock("Track", songName, TFT_GOLD);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     displayTrackInfoBlock("Album", albumName, TFT_CYAN);
 }
@@ -355,7 +355,7 @@ void setDisplayActive(bool active) {
         displayActive = true;
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
-        lastDisplayedAlbumCoverUrl = "";
+        lastFetchedAlbumCoverUrl = "";
     } else if (!active && displayActive) {
         Serial.println("Turning display OFF");
         tft.clear(TFT_BLACK);
