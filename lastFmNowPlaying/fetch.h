@@ -1,6 +1,3 @@
-#ifndef FETCH_H
-#define FETCH_H
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h> 
@@ -272,4 +269,34 @@ String getSuitableAlbumCoverUrlFromLastFmApi(JsonArray images) {
     return albumCoverUrl;
 }
 
-#endif
+String resolveAlbumCoverUrl(JsonObject track) {
+    JsonArray images = track["image"];
+    bool isPng = images[0]["#text"].as<String>().endsWith(".png");
+    String albumCoverUrl = getSuitableAlbumCoverUrlFromLastFmApi(images);
+
+    if (!images.isNull() && isPng) {
+        Serial.println("Getting album cover url from last.fm API response...");
+    } else if (JPG_CONVERTER_URL && !images.isNull() && !isPng) {
+        String mbid = "";
+        String artist = "";
+        String album = "";
+        if (track.containsKey("album") && track["album"].is<JsonObject>()) {
+            if (track["album"].containsKey("mbid")) {
+                mbid = track["album"]["mbid"].as<String>();
+            }
+            if (track["album"].containsKey("#text")) {
+                album = track["album"]["#text"].as<String>();
+            }
+        }
+        if (track.containsKey("artist") && track["artist"].is<JsonObject>() && track["artist"].containsKey("#text")) {
+            artist = track["artist"]["#text"].as<String>();
+        }
+        albumCoverUrl = getConvertedImageUrl(albumCoverUrl, mbid, artist, album);
+    } else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
+        String mbid = track["album"]["mbid"].as<String>();
+        albumCoverUrl = getMusicbrainzImageUrl(mbid);
+    } else {
+        Serial.println("Fetching cover album image have not worked.");
+    }
+    return albumCoverUrl;
+}

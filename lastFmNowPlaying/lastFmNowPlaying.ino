@@ -22,11 +22,9 @@ bool displayActive = true;
 unsigned long lastActivityTime = 0;
 
 // --- Function Prototypes ---
-void getNowPlaying();
-void displayAlbumCover(String coverUrl);
-void setDisplayActive(bool active);
+void fetchAndDisplayRecentTrack();
 
-void initSerialMonitor () {
+void initSerialCommunication() {
     Serial.begin(115200);
     unsigned long serialStart = millis();
     while (!Serial && millis() - serialStart < 2000) {
@@ -127,12 +125,12 @@ void fetchInitialData() {
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.println("Getting Last.fm data...");
-    getNowPlaying();
+    fetchAndDisplayRecentTrack();
     Serial.println("Initial data fetch attempt complete.");
 }
 
 void setup() {
-    initSerialMonitor();
+    initSerialCommunication();
     initDisplay();
     connectToWifi();
     synchronizeTime();
@@ -149,141 +147,85 @@ void loop() {
         tft.setCursor(0, 0);
         tft.println("WiFi Lost! Reconnecting...");
         // TODO: add WiFi reconnection logic
-        return; // Skip fetching data if disconnected
+        return;
     }
     Serial.printf("Free RAM: %u bytes\n", ESP.getFreeHeap()); // Track free RAM
     Serial.println("Refreshing Last.fm data...");
-    getNowPlaying();
+    fetchAndDisplayRecentTrack();
     Serial.println("Waiting before next refresh...");
     delay(REFRESH_MS);
 }
 
-void getNowPlaying() {
+void fetchAndDisplayRecentTrack() {
+    DynamicJsonDocument doc(2048);
+    JsonObject recentTrack;
+
+    if (!fetchRecentTrackInfo(doc, recentTrack)) {
+        return;
+    }
+
+    bool isPlaying = recentTrack.containsKey("@attr") &&
+            recentTrack["@attr"].containsKey("nowplaying") &&
+            recentTrack["@attr"]["nowplaying"].as<String>() == "true";
+
+    if (!isPlaying && recentTrack.containsKey("date") && recentTrack["date"].is<JsonObject>() && recentTrack["date"].containsKey("uts")) {
+        lastActivityTime = recentTrack["date"]["uts"].as<unsigned long>();
+    } else {
+        lastActivityTime = time(nullptr);
+    }
+
+    manageDisplayActiveState(isPlaying, lastActivityTime, displayActive);
+
+    String songName = recentTrack["name"] | "Unknown Track";
+    String artistName = recentTrack["artist"]["#text"] | "Unknown Artist";
+    
+    if (!shouldUpdateDisplay(displayActive, artistName, songName)) {
+        updatePlayStatusIcon(isPlaying);
+        return;
+    }
+
+    String albumName = recentTrack["album"]["#text"] | "Unknown Album";
+    String newAlbumCoverUrl = resolveAlbumCoverUrl(recentTrack);
+    
+    updateDisplay(artistName, songName, albumName, newAlbumCoverUrl, isPlaying);
+
+    lastDisplayedArtist = artistName;
+    lastDisplayedTrack = songName;
+}
+
+bool fetchRecentTrackInfo(DynamicJsonDocument& doc, JsonObject& recentTrack) {
     Serial.println("\nFetching Now Playing data...");
     String lastFmUrl = String("http://") + LASTFM_HOST + LASTFM_PATH;
+    doc = fetchJson(lastFmUrl.c_str());  // fetchJson must return by value or via output param
 
-    DynamicJsonDocument doc = fetchJson(lastFmUrl.c_str());
-
-    // Check if the fetch and parse was successful
     if (doc.isNull()) {
         Serial.println("Failed to fetch or parse JSON data.");
-        return;
+        return false;
     }
 
     Serial.println("JSON Received and Parsed. Extracting data...");
-
     JsonObject recenttracks = doc["recenttracks"];
-    if (!recenttracks.isNull()) {
-        JsonArray trackArray = recenttracks["track"];
-        if (!trackArray.isNull() && trackArray.size() > 0) {
-            JsonObject recentTrack = trackArray[0];
 
-            bool isPlaying = recentTrack.containsKey("@attr") &&
-                    recentTrack["@attr"].containsKey("nowplaying") &&
-                    recentTrack["@attr"]["nowplaying"].as<String>() == "true";
-
-            if (!isPlaying && recentTrack.containsKey("date") && recentTrack["date"].is<JsonObject>() && recentTrack["date"].containsKey("uts")) {
-                lastActivityTime = recentTrack["date"]["uts"].as<unsigned long>();
-            } else {
-                lastActivityTime = time(nullptr);
-            }
-
-            sleepOrWakeDisplay(isPlaying, lastActivityTime, displayActive);
-
-            String songName = recentTrack["name"] | "Unknown Track";
-            String artistName = recentTrack["artist"]["#text"] | "Unknown Artist";
-            
-            if (!shouldUpdate(displayActive, artistName, songName)) {
-                displayOrErasePlayIcon(isPlaying);
-                return;
-            }
-
-            String albumName = recentTrack["album"]["#text"] | "Unknown Album";
-            String newAlbumCoverUrl = getAlbumCoverUrl(recentTrack);
-            
-            updateDisplay(artistName, songName, albumName, newAlbumCoverUrl, isPlaying);
-
-            lastDisplayedArtist = artistName;
-            lastDisplayedTrack = songName;
-        } else {
-            Serial.println("No tracks found in response.");
-            // Handle display for "no tracks" state
-            if (lastDisplayedArtist != "" || lastDisplayedTrack != "") {
-                tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(1.25);
-                tft.setCursor(0, 0); tft.println("No recent tracks found.");
-                return;
-            }
-        }
-    } else {
+    if (recenttracks.isNull()) {
         Serial.println("Key 'recenttracks' not found in JSON.");
-    }
-}
-
-void sleepOrWakeDisplay(bool isPlaying, unsigned long lastActivityTime, bool isDisplayActive) {
-    if (isPlaying && !isDisplayActive) {
-        setDisplayActive(true);
-        return;
+        return false;
     }
 
-    if (!isPlaying && isDisplayActive) {
-        time_t now_ts = time(nullptr);
-        unsigned long elapsedSeconds = now_ts - lastActivityTime;
-        Serial.printf("Time since last activity: %lu seconds\n", elapsedSeconds);
-
-        if (elapsedSeconds > DISPLAY_OFF_MS / 1000) {
-            Serial.printf("Timeout reached (%lu ms > %d ms). ", elapsedSeconds * 1000, DISPLAY_OFF_MS);
-            setDisplayActive(false);
+    JsonArray trackArray = recenttracks["track"];
+    if (trackArray.isNull() || trackArray.size() == 0) {
+        Serial.println("No tracks found in response.");
+        // Handle display for "no tracks" state
+        if (lastDisplayedArtist != "" || lastDisplayedTrack != "") {
+            tft.fillScreen(TFT_BLUE); tft.setTextColor(TFT_WHITE); tft.setTextSize(1.25);
+            tft.setCursor(0, 0); tft.println("No recent tracks found.");
         }
-    }
-}
-
-bool shouldUpdate(bool isDisplayActive, String artistName, String songName) {
-    if (!isDisplayActive) {
-        Serial.println("Display is OFF, skipping drawing.");
         return false;
     }
-    if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
-        Serial.println("Track has not changed. Skipping redraw.");
-        return false;
-    }
-    Serial.println("Display is ON, proceeding with drawing...");
+    recentTrack = trackArray[0];
     return true;
 }
 
-String getAlbumCoverUrl(JsonObject track) {
-    JsonArray images = track["image"];
-    bool isPng = images[0]["#text"].as<String>().endsWith(".png");
-    String albumCoverUrl = getSuitableAlbumCoverUrlFromLastFmApi(images);
-
-    if (!images.isNull() && isPng) {
-        Serial.println("Getting album cover url from last.fm API response...");
-        return albumCoverUrl;
-    } else if (JPG_CONVERTER_URL && !images.isNull() && !isPng) {
-        String mbid = "";
-        String artist = "";
-        String album = "";
-        if (track.containsKey("album") && track["album"].is<JsonObject>()) {
-            if (track["album"].containsKey("mbid")) {
-                mbid = track["album"]["mbid"].as<String>();
-            }
-            if (track["album"].containsKey("#text")) {
-                album = track["album"]["#text"].as<String>();
-            }
-        }
-        if (track.containsKey("artist") && track["artist"].is<JsonObject>() && track["artist"].containsKey("#text")) {
-            artist = track["artist"]["#text"].as<String>();
-        }
-        albumCoverUrl = getConvertedImageUrl(albumCoverUrl, mbid, artist, album);
-    } else if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
-        String mbid = track["album"]["mbid"].as<String>();
-        albumCoverUrl = getMusicbrainzImageUrl(mbid);
-    } else {
-        Serial.println("Fetching cover album image have not worked.");
-    }
-    return albumCoverUrl;
-}
-
-void displayOrErasePlayIcon(bool isPlaying) {
+void updatePlayStatusIcon(bool isPlaying) {
   int x = SCREEN_WIDTH_PX - PLAYICON_PX - PLAYICON_PADDING_PX;
   int y = PLAYICON_PADDING_PX;
   if (isPlaying) {
@@ -308,7 +250,7 @@ void displayAlbumCover(String coverUrl) {
     }
 }
 
-void displayTrackInfoBlock(String label, String info, int labelColor) {
+void displayLabeledTrackInfoLine(String label, String info, int labelColor) {
     String trimmedInfo = adjustTrackInfo(info);
     tft.setFont(&fonts::Font0);
     tft.setTextColor(labelColor, TFT_BLACK); tft.setTextSize(TRACK_INFO_LABEL_TEXT_SIZE); tft.println(label + ":");
@@ -320,11 +262,11 @@ void displayTrackInfoBlock(String label, String info, int labelColor) {
 
 void displayTrackInfo(String artistName, String songName, String albumName) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
-    displayTrackInfoBlock("Artist", artistName, TFT_RED);
+    displayLabeledTrackInfoLine("Artist", artistName, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    displayTrackInfoBlock("Track", songName, TFT_GOLD);
+    displayLabeledTrackInfoLine("Track", songName, TFT_GOLD);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    displayTrackInfoBlock("Album", albumName, TFT_CYAN);
+    displayLabeledTrackInfoLine("Album", albumName, TFT_CYAN);
 }
 
 void updateDisplay(String artistName, String songName, String albumName, String albumCoverUrl, bool isPlaying) {
@@ -338,8 +280,39 @@ void updateDisplay(String artistName, String songName, String albumName, String 
     // TODO: Only redraw album if actually changed, use sprites for track info
     displayAlbumCover(albumCoverUrl);
     displayTrackInfo(artistName, songName, albumName);
-    displayOrErasePlayIcon(isPlaying);
+    updatePlayStatusIcon(isPlaying);
     tft.endWrite();
+}
+
+bool shouldUpdateDisplay(bool isDisplayActive, String artistName, String songName) {
+    if (!isDisplayActive) {
+        Serial.println("Display is OFF, skipping drawing.");
+        return false;
+    }
+    if (artistName == lastDisplayedArtist && songName == lastDisplayedTrack) {
+        Serial.println("Track has not changed. Skipping redraw.");
+        return false;
+    }
+    Serial.println("Display is ON, proceeding with drawing...");
+    return true;
+}
+
+void manageDisplayActiveState(bool isPlaying, unsigned long lastActivityTime, bool isDisplayActive) {
+    if (isPlaying && !isDisplayActive) {
+        setDisplayActive(true);
+        return;
+    }
+
+    if (!isPlaying && isDisplayActive) {
+        time_t now_ts = time(nullptr);
+        unsigned long elapsedSeconds = now_ts - lastActivityTime;
+        Serial.printf("Time since last activity: %lu seconds\n", elapsedSeconds);
+
+        if (elapsedSeconds > DISPLAY_OFF_MS / 1000) {
+            Serial.printf("Timeout reached (%lu ms > %d ms). ", elapsedSeconds * 1000, DISPLAY_OFF_MS);
+            setDisplayActive(false);
+        }
+    }
 }
 
 // TODO: tft.setBrightness doesn't work, look for function that will do this stuff
