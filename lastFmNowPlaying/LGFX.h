@@ -11,6 +11,7 @@ class LGFX : public lgfx::LGFX_Device
 {
     lgfx::Panel_ST7789 _panel_instance; // ST7789 panel
     lgfx::Bus_Parallel8 _bus_instance;  // MCU8080 8-bit parallel bus
+    lgfx::Light_PWM _light_instance;    // Instance for backlight control
 
 public:
     LGFX(void)
@@ -57,6 +58,18 @@ public:
             cfg.bus_shared = true;          // Bus shared with other devices (e.g., SD card) - Set appropriately
 
             _panel_instance.config(cfg); // Apply the panel configuration
+        }
+
+        { // Display backlight configuration
+            auto cfg = _light_instance.config();
+
+            cfg.pin_bl = 32;            // Pin number to which the backlight is connected
+            cfg.invert = false;         // True to invert the brightness of the backlight
+            cfg.freq   = 44100;         // Backlight PWM frequency
+            cfg.pwm_channel = 7;        // PWM channel number to use
+
+            _light_instance.config(cfg);
+            _panel_instance.setLight(&_light_instance);   // Set the backlight to the panel.
         }
 
         setPanel(&_panel_instance); // Set the configured panel as the active panel

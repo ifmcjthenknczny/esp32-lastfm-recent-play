@@ -3,16 +3,30 @@
 const int ELLIPSIS_LEN = 3;
 const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LEN;
 
+struct ReplaceRule {
+    const char* from;
+    const char* to;
+};
+
+const ReplaceRule REPLACE_RULES[] = {
+    {"’", "'"},
+    {"“", "\""},
+    {"”", "\""},
+    {"…", "..."},
+    {"–", "-"},
+    {"—", "-"},
+};
+
 String adjustTrackInfo(String label) {
-    label.replace("’", "'");
-    label.replace("“", "\"");
-    label.replace("”", "\"");
-    label.replace("…", "...");
-    label.replace("–", "-");
-    label.replace("—", "-");
-    if (label.length() > MAX_CHARS_IN_LINE) {
-        return label.substring(0, MAX_STRING_LENGTH) + "...";
+    for (const auto& rule : REPLACE_RULES) {
+        label.replace(rule.from, rule.to);
     }
+    if (label.length() > MAX_CHARS_IN_LINE) {
+        label = label.substring(0, MAX_STRING_LENGTH);
+        label.trim();
+        return label + "...";
+    }
+
     return label;
 }
 

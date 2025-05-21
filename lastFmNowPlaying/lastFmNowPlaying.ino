@@ -265,8 +265,10 @@ void displayTrackInfo(String artistName, String songName, String albumName) {
     displayLabeledTrackInfoLine("Artist", artistName, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     displayLabeledTrackInfoLine("Track", songName, TFT_GOLD);
-    tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    displayLabeledTrackInfoLine("Album", albumName, TFT_CYAN);
+    if (albumName != "") {
+        tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
+        displayLabeledTrackInfoLine("Album", albumName, TFT_CYAN);
+    }
 }
 
 void updateDisplay(String artistName, String songName, String albumName, String albumCoverUrl, bool isPlaying) {
@@ -319,12 +321,14 @@ void manageDisplayActiveState(bool isPlaying, unsigned long lastActivityTime, bo
 void setDisplayActive(bool newDisplayActive) {
     if (newDisplayActive && !displayActive) {
         Serial.println("Turning display ON");
+        // tft.setBrightness(255);
         displayActive = true;
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
     } else if (!newDisplayActive && displayActive) {
         Serial.println("Turning display OFF");
         tft.clear(TFT_BLACK);
+        // tft.setBrightness(0);
         displayActive = false;
     }
 }
