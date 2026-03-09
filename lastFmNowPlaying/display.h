@@ -28,10 +28,4 @@ void displayShowWifiReconnecting();
 /** Show "Getting Last.fm data..." and clear screen. */
 void displayShowFetching();
 
-/** Trim/replace text for display; returns adjusted string (may truncate with "..."). */
-String displayAdjustTrackText(const String& text);
-
-/** Scale factor for album cover from URL (PNG vs JPG sizes). */
-float displayAlbumCoverScale(const String& coverUrl);
-
 #endif

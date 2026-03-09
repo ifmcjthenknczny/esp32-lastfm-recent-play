@@ -37,6 +37,12 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     return true;
 }
 
+bool isTrackNowPlaying(const JsonObject& track) {
+    return track.containsKey("@attr") &&
+           track["@attr"].containsKey("nowplaying") &&
+           track["@attr"]["nowplaying"].as<String>() == "true";
+}
+
 void updateLastActivityTime(const JsonObject& track, bool isPlaying) {
     if (isPlaying) {
         lastActivityTime = (unsigned long)time(nullptr);
@@ -65,13 +71,6 @@ void manageDisplayActive(bool isPlaying) {
         }
     }
 }
-
-bool isTrackNowPlaying(const JsonObject& track) {
-    return track.containsKey("@attr") &&
-           track["@attr"].containsKey("nowplaying") &&
-           track["@attr"]["nowplaying"].as<String>() == "true";
-}
-
 }  // namespace
 
 void lastFmFetchAndDisplay() {
