@@ -7,6 +7,6 @@
 void fetchJson(const char* url, DynamicJsonDocument& outDoc);
 
 /** Resolve album cover image URL from Last.fm track object (may use CAA or JPG converter). */
-String resolveAlbumCoverUrl(JsonObject track);
+String getAlbumCoverUrl(JsonObject track);
 
 #endif

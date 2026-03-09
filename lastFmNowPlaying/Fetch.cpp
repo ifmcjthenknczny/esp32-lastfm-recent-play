@@ -8,113 +8,102 @@
 
 static const int MAX_REDIRECTS = 8;
 
+static bool isRedirect(int code) {
+    return (code == 301 || code == 302 || code == 307 || code == 308);
+}
+
 void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
     outDoc.clear();
     yield();
-
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[fetch] WiFi not connected.");
         return;
     }
 
+    String url = initialUrl;
     HTTPClient http;
-    String currentUrl = initialUrl;
-    int redirectCount = 0;
 
-    while (redirectCount <= MAX_REDIRECTS) {
+    for (int n = 0; n <= MAX_REDIRECTS; n++) {
         yield();
-        if (!http.begin(currentUrl)) {
+        if (!http.begin(url)) {
             if (http.connected()) http.end();
             return;
         }
         http.setUserAgent("ESP32-HTTP-Client");
-        int httpCode = http.GET();
+        int code = http.GET();
         yield();
 
-        if (httpCode == HTTP_CODE_OK) {
+        if (code == HTTP_CODE_OK) {
             WiFiClient* stream = http.getStreamPtr();
-            if (stream) {
-                deserializeJson(outDoc, *stream);
-            }
+            if (stream) deserializeJson(outDoc, *stream);
             http.end();
             return;
         }
-
-        if (httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND ||
-            httpCode == HTTP_CODE_TEMPORARY_REDIRECT || httpCode == 308) {
-            String newUrl = http.getLocation();
+        if (isRedirect(code)) {
+            String next = http.getLocation();
             http.end();
-            if (newUrl.length() == 0 || newUrl == currentUrl) return;
-            currentUrl = newUrl;
-            redirectCount++;
+            if (next.length() == 0 || next == url) return;
+            url = next;
             continue;
         }
-
-        if (httpCode > 0) {
-            http.end();
-        } else if (http.connected()) {
-            http.end();
-        }
+        if (http.connected()) http.end();
         return;
     }
-    if (http.connected()) http.end();
 }
 
 static String findFinalImageUrl(const char* initialUrl) {
     if (WiFi.status() != WL_CONNECTED) return "";
-    String currentUrl = initialUrl;
-    HTTPClient http;
-    int redirectCount = 0;
 
-    while (redirectCount <= MAX_REDIRECTS) {
-        if (!http.begin(currentUrl)) {
+    String url = initialUrl;
+    HTTPClient http;
+
+    for (int n = 0; n <= MAX_REDIRECTS; n++) {
+        if (!http.begin(url)) {
             if (http.connected()) http.end();
             return "";
         }
-        int httpCode = http.sendRequest("HEAD", (uint8_t*)nullptr, (size_t)0);
-        if (httpCode == HTTP_CODE_OK) {
+
+        int code = http.sendRequest("HEAD", (uint8_t*)nullptr, (size_t)0);
+        if (code == HTTP_CODE_OK) {
             http.end();
-            return currentUrl;
+            return url;
         }
-        if (httpCode == 301 || httpCode == 302 || httpCode == 307 || httpCode == 308) {
-            String newUrl = http.getLocation();
-            http.end();
-            if (newUrl.length() == 0 || newUrl == currentUrl) return "";
-            currentUrl = newUrl;
-            redirectCount++;
-        } else {
+        if (!isRedirect(code)) {
             http.end();
             return "";
         }
+
+        String next = http.getLocation();
+        http.end();
+        if (next.length() == 0 || next == url) return "";
+        url = next;
     }
-    if (http.connected()) http.end();
     return "";
 }
 
 static String getConvertedImageUrl(const String& imageUrl, const String& mbid,
                                    const String& artist, const String& album) {
     if (WiFi.status() != WL_CONNECTED) return "";
-    StaticJsonDocument<1024> jsonDoc;
-    jsonDoc["imageUrl"] = imageUrl;
-    if (mbid.length() > 0) jsonDoc["mbid"] = mbid;
-    if (artist.length() > 0) jsonDoc["artist"] = artist;
-    if (album.length() > 0) jsonDoc["album"] = album;
 
-    String requestBody;
-    serializeJson(jsonDoc, requestBody);
+    StaticJsonDocument<1024> doc;
+    doc["imageUrl"] = imageUrl;
+    if (mbid.length())   doc["mbid"]   = mbid;
+    if (artist.length()) doc["artist"] = artist;
+    if (album.length())  doc["album"]  = album;
+
+    String body;
+    serializeJson(doc, body);
 
     HTTPClient http;
     if (!http.begin(JPG_CONVERTER_URL)) return "";
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", JPG_CONVERTER_URL_API_KEY);
     http.addHeader("Connection", "close");
-    int httpCode = http.POST(requestBody);
-    String result;
-    if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
-        result = http.getString();
-    }
+
+    int code = http.POST(body);
+    String out = (code == HTTP_CODE_OK || code == HTTP_CODE_CREATED) ? http.getString() : "";
     http.end();
-    return result;
+    return out;
 }
 
 static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);  // reused for CAA fetch to avoid per-call allocation
@@ -142,35 +131,38 @@ static String getMusicbrainzImageUrl(const String& mbid) {
 
 static String getSuitableAlbumCoverUrlFromLastFmApi(JsonArray images) {
     if (images.isNull() || images.size() == 0) return "";
-    if (images.size() > 3) return images[3]["#text"].as<String>();
-    if (images.size() > 2) return images[2]["#text"].as<String>();
-    if (images.size() > 1) return images[1]["#text"].as<String>();
-    return images[0]["#text"].as<String>();
+    size_t idx = (images.size() > 3) ? 3 : (images.size() - 1);
+    return images[idx]["#text"].as<String>();
 }
 
-String resolveAlbumCoverUrl(JsonObject track) {
-    JsonArray images = track["image"];
-    String albumCoverUrl = getSuitableAlbumCoverUrlFromLastFmApi(images);
-    bool isPng = (images.size() > 0 && images[0]["#text"].as<String>().endsWith(".png"));
+static String trackStr(JsonObject track, const char* key1, const char* key2) {
+    if (!track.containsKey(key1) || !track[key1].is<JsonObject>() || !track[key1].as<JsonObject>().containsKey(key2))
+        return "";
+    return track[key1][key2].as<String>();
+}
 
-    if (!images.isNull() && isPng) {
-        return albumCoverUrl;
-    }
-    if (strlen(JPG_CONVERTER_URL) > 0 && !images.isNull() && !isPng) {
-        String mbid, artist, album;
-        if (track.containsKey("album") && track["album"].is<JsonObject>()) {
-            if (track["album"].containsKey("mbid")) mbid = track["album"]["mbid"].as<String>();
-            if (track["album"].containsKey("#text")) album = track["album"]["#text"].as<String>();
-        }
-        if (track.containsKey("artist") && track["artist"].is<JsonObject>() && track["artist"].containsKey("#text")) {
-            artist = track["artist"]["#text"].as<String>();
-        }
-        String converted = getConvertedImageUrl(albumCoverUrl, mbid, artist, album);
+String getAlbumCoverUrl(JsonObject track) {
+    JsonArray images = track["image"];
+    String url = getSuitableAlbumCoverUrlFromLastFmApi(images);
+    bool hasImages = !images.isNull() && images.size() > 0;
+    bool isPng = hasImages && images[0]["#text"].as<String>().endsWith(".png");
+
+    if (hasImages && isPng)
+        return url;
+
+    if (hasImages && !isPng && strlen(JPG_CONVERTER_URL) > 0) {
+        String converted = getConvertedImageUrl(
+            url,
+            trackStr(track, "album", "mbid"),
+            trackStr(track, "artist", "#text"),
+            trackStr(track, "album", "#text")
+        );
         if (converted.length() > 0) return converted;
     }
-    if (track.containsKey("album") && track["album"].is<JsonObject>() && track["album"].containsKey("mbid")) {
-        String mbid = track["album"]["mbid"].as<String>();
+
+    String mbid = trackStr(track, "album", "mbid");
+    if (mbid.length() > 0)
         return getMusicbrainzImageUrl(mbid);
-    }
-    return albumCoverUrl;
+
+    return url;
 }

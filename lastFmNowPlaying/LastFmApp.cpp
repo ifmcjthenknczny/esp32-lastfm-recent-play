@@ -57,7 +57,6 @@ void manageDisplayActive(bool isPlaying) {
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
         Serial.println("Display ON");
-        return;
     }
     if (!isPlaying && displayActive) {
         unsigned long elapsed = (unsigned long)time(nullptr) - lastActivityTime;
@@ -97,7 +96,7 @@ void lastFmFetchAndDisplay() {
     }
 
     String albumName = track["album"]["#text"] | "Unknown Album";
-    String coverUrl  = resolveAlbumCoverUrl(track);
+    String coverUrl  = getAlbumCoverUrl(track);
 
     displayUpdate(
         artistName.c_str(),
