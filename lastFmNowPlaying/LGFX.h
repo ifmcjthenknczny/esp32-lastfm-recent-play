@@ -5,7 +5,8 @@
 #include <HTTPClient.h> // this lib needs to be before LovyanGFX, otherwise drawJpgUrl and drawPngUrl is unusable
 #include <LovyanGFX.hpp>
 
-static const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
+// Font defined in main .ino (after U8g2lib.h) so the symbol is available in one place only.
+extern const lgfx::U8g2font myExtendedFont;
 
 class LGFX : public lgfx::LGFX_Device
 {
