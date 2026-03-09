@@ -1,11 +1,12 @@
 #ifndef API_CONFIG_H
 #define API_CONFIG_H
 
-#include "config.h"
+#include <Arduino.h>
+#include "ConfigDecl.h"
 
 // --- Last.fm API ---
-const char* LASTFM_HOST = "ws.audioscrobbler.com";
-const int   LASTFM_PORT = 80;
+static const char* LASTFM_HOST = "ws.audioscrobbler.com";
+static const int   LASTFM_PORT = 80;
 
 /** Builds Last.fm recent tracks API path (avoids global String). */
 inline String getLastFmRecentTracksPath() {
@@ -14,16 +15,16 @@ inline String getLastFmRecentTracksPath() {
 }
 
 // --- Cover Art Archive ---
-const char* COVERALBUM_HOST = "coverartarchive.org";
-const int   COVERALBUM_PORT = 443;
+static const char* COVERALBUM_HOST = "coverartarchive.org";
+static const int   COVERALBUM_PORT = 443;
 
 inline String coverAlbumPath(const String& mbid) {
     return String("/release/") + mbid + "?fmt=json";
 }
 
 // --- Buffers & assets ---
-const size_t JSON_BUFFER_SIZE = 2048;
-const int    PLAYICON_PX      = 24;
-const char*  PLAYICON_URL     = "https://i.ibb.co/204LYysN/playnow-small.png";
+static const size_t JSON_BUFFER_SIZE = 2048;
+static const int    PLAYICON_PX      = 24;
+static const char* PLAYICON_URL      = "https://i.ibb.co/204LYysN/playnow-small.png";
 
 #endif

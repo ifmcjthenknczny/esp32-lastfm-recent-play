@@ -20,6 +20,8 @@
 #include "LastFmApp.h"
 
 LGFX tft;
+// Font must be defined here so U8g2lib.h (included above) is in scope for u8g2_font_unifont_t_extended.
+const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 
 void setup() {
     wifi::initSerial();

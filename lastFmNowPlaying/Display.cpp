@@ -2,7 +2,7 @@
 #include "LGFX.h"
 #include "userSettings.h"
 #include "apiConfig.h"
-#include "config.h"
+#include "ConfigDecl.h"
 #include <HTTPClient.h>
 
 extern LGFX tft;

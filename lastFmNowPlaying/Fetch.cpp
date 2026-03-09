@@ -1,6 +1,6 @@
 #include "fetch.h"
 #include "apiConfig.h"
-#include "config.h"
+#include "ConfigDecl.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
