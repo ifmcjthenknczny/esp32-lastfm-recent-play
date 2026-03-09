@@ -26,7 +26,10 @@ const ReplaceRule REPLACE_RULES[] = {
     {"\u2014", "-"},   // em dash
 };
 
-}  // namespace
+const int LABEL_LINE_PX  = 8;
+const int VALUE_LINE_PX  = 20;
+const int SPACE_LINE_PX  = 8;
+const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX + SPACE_LINE_PX + LABEL_LINE_PX;
 
 String displayAdjustTrackText(const String& text) {
     String out = text;
@@ -66,7 +69,7 @@ void displayInit() {
     Serial.println("TFT basics set up.");
 }
 
-static void drawAlbumCover(const String& coverUrl) {
+void drawAlbumCover(const String& coverUrl) {
     const float scale = displayAlbumCoverScale(coverUrl);
     if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
         tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
@@ -75,7 +78,7 @@ static void drawAlbumCover(const String& coverUrl) {
     }
 }
 
-static void drawLabeledLine(const char* label, const String& info, uint16_t labelColor) {
+void drawLabeledLine(const char* label, const String& info, uint16_t labelColor) {
     String trimmed = displayAdjustTrackText(info);
     tft.setFont(&fonts::Font0);
     tft.setTextColor(labelColor, TFT_BLACK);
@@ -90,7 +93,7 @@ static void drawLabeledLine(const char* label, const String& info, uint16_t labe
     tft.println();
 }
 
-static void drawTrackInfo(const char* artist, const char* song, const char* album) {
+void drawTrackInfo(const char* artist, const char* song, const char* album) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
     drawLabeledLine("Artist", String(artist), TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
@@ -101,7 +104,7 @@ static void drawTrackInfo(const char* artist, const char* song, const char* albu
     }
 }
 
-static void drawPlayIcon(bool isPlaying) {
+void drawPlayIcon(bool isPlaying) {
     const int x = SCREEN_WIDTH_PX - PLAYICON_PX - PLAYICON_PADDING_PX;
     const int y = PLAYICON_PADDING_PX;
     if (isPlaying) {
@@ -111,6 +114,8 @@ static void drawPlayIcon(bool isPlaying) {
     }
 }
 
+}  // namespace
+
 void displayUpdate(const char* artistName, const char* songName, const char* albumName,
                    const char* albumCoverUrl, bool isPlaying) {
     tft.startWrite();
@@ -119,6 +124,16 @@ void displayUpdate(const char* artistName, const char* songName, const char* alb
     drawTrackInfo(artistName, songName, albumName);
     drawPlayIcon(isPlaying);
     tft.endWrite();
+}
+
+void displayUpdateTrackNameOnly(const char* songName) {
+    const int w = SCREEN_WIDTH_PX - TEXT_LEFT_PADDING_PX;
+    tft.fillRect(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y, w, VALUE_LINE_PX, TFT_BLACK);
+    tft.setFont(&myExtendedFont);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(TRACK_INFO_TEXT_SIZE);
+    tft.setCursor(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y);
+    tft.println(displayAdjustTrackText(String(songName)));
 }
 
 void displayUpdatePlayIcon(bool isPlaying) {

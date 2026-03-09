@@ -5,8 +5,8 @@
 const int SCREEN_WIDTH_PX  = 320;
 const int SCREEN_HEIGHT_PX = 240;
 
-// --- Refresh & power saving ---
-const int         REFRESH_MS       = 5000;
+// --- Refresh ---
+const int REFRESH_MS = 5000;
 const unsigned long DISPLAY_OFF_MS = 30000;
 
 // --- Layout ---

@@ -13,6 +13,8 @@ namespace {
 
 String lastDisplayedArtist;
 String lastDisplayedTrack;
+String lastDisplayedAlbum;
+String lastDisplayedCoverUrl;
 bool displayActive = true;
 unsigned long lastActivityTime = 0;
 
@@ -33,12 +35,6 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     }
     outTrack = trackArray[0];
     return true;
-}
-
-bool isTrackNowPlaying(const JsonObject& track) {
-    return track.containsKey("@attr") &&
-           track["@attr"].containsKey("nowplaying") &&
-           track["@attr"]["nowplaying"].as<String>() == "true";
 }
 
 void updateLastActivityTime(const JsonObject& track, bool isPlaying) {
@@ -70,10 +66,10 @@ void manageDisplayActive(bool isPlaying) {
     }
 }
 
-bool shouldRedrawDisplay(const String& artist, const String& track) {
-    if (!displayActive) return false;
-    if (artist == lastDisplayedArtist && track == lastDisplayedTrack) return false;
-    return true;
+bool isTrackNowPlaying(const JsonObject& track) {
+    return track.containsKey("@attr") &&
+           track["@attr"].containsKey("nowplaying") &&
+           track["@attr"]["nowplaying"].as<String>() == "true";
 }
 
 }  // namespace
@@ -87,25 +83,32 @@ void lastFmFetchAndDisplay() {
     updateLastActivityTime(track, isPlaying);
     manageDisplayActive(isPlaying);
 
-    String artistName = track["artist"]["#text"] | "Unknown Artist";
-    String songName  = track["name"] | "Unknown Track";
+    if (!displayActive) return;
 
-    if (!shouldRedrawDisplay(artistName, songName)) {
+    String artistName = track["artist"]["#text"] | "Unknown Artist";
+    String songName   = track["name"] | "Unknown Track";
+    String albumName  = track["album"]["#text"] | "Unknown Album";
+    String coverUrl   = getAlbumCoverUrl(track);
+
+    bool coverChanged  = (coverUrl != lastDisplayedCoverUrl);
+    bool artistChanged = (artistName != lastDisplayedArtist);
+    bool trackChanged  = (songName != lastDisplayedTrack);
+    bool albumChanged  = (albumName != lastDisplayedAlbum);
+
+    bool shouldRedrawWholeDisplay = coverChanged || artistChanged || albumChanged;
+    bool shouldRedrawTrackOnly = !coverChanged && !artistChanged && !albumChanged && trackChanged;
+
+    if (shouldRedrawWholeDisplay) {
+        displayUpdate(artistName.c_str(), songName.c_str(), albumName.c_str(),
+                      coverUrl.c_str(), isPlaying);
+    } else if (shouldRedrawTrackOnly) {
+        displayUpdateTrackNameOnly(songName.c_str());
+    } else {
         displayUpdatePlayIcon(isPlaying);
-        return;
     }
 
-    String albumName = track["album"]["#text"] | "Unknown Album";
-    String coverUrl  = getAlbumCoverUrl(track);
-
-    displayUpdate(
-        artistName.c_str(),
-        songName.c_str(),
-        albumName.c_str(),
-        coverUrl.c_str(),
-        isPlaying
-    );
-
-    lastDisplayedArtist = artistName;
-    lastDisplayedTrack  = songName;
+    lastDisplayedArtist   = artistName;
+    lastDisplayedTrack    = songName;
+    lastDisplayedAlbum    = albumName;
+    lastDisplayedCoverUrl = coverUrl;
 }

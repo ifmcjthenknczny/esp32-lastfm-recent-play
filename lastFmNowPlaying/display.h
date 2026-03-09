@@ -6,7 +6,7 @@
 /** Initialize TFT (LovyanGFX), rotation, font, and show boot info. */
 void displayInit();
 
-/** Clear and show full "now playing" screen. */
+/** Clear screen, draw album cover, draw all text, and play icon. */
 void displayUpdate(
     const char* artistName,
     const char* songName,
@@ -15,13 +15,14 @@ void displayUpdate(
     bool isPlaying
 );
 
-/** Update only the play/pause icon (no full redraw). */
+void displayUpdateTrackNameOnly(const char* songName);
+
 void displayUpdatePlayIcon(bool isPlaying);
 
 /** Show "No recent tracks" message. */
 void displayShowNoTracks();
 
-/** Show "WiFi reconnecting" message (caller clears screen first if needed). */
+/** Show "WiFi reconnecting" message. */
 void displayShowWifiReconnecting();
 
 /** Show "Getting Last.fm data..." and clear screen. */
