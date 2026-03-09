@@ -70,29 +70,38 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
 7.  **Configure `LovyanGFX` (If Needed):**
     * This code includes `"LGFX.h"`. This file typically contains the specific pin and driver configuration for your board variant (ESP32-2432S022c).
     * Ensure you have the correct `LGFX.h` file for your board within the project directory or that your LovyanGFX library installation is set up correctly for the `esp32-2432s022c`. Check the LovyanGFX documentation or examples if the display doesn't work out-of-the-box. The correct configuration is *vital*.
-8.  **Download/Clone Project Code:** Get all the `.ino` and `.h` files for this project.
+8.  **Download/Clone Project Code:** Get all project files (see **Project structure** below).
 9.  **Configure Credentials:** See the "Configuration" section below. This is **required**!
-10. **Put `lv_conf.h` file in the right place:** The `lv_conf.h` file from the repository is required to be in `Arduino/libraries` directory - parallel to the `LovyanGFX` library directory.
-11. **Upload Code:** Open the main `.ino` file from `lastFmNowPlaying` directory in the Arduino IDE and hit the Upload button (the arrow icon).
+10. **Put `lv_conf.h` file in the right place:** The `lv_conf.h` file from the repository must be in your `Arduino/libraries` directory (next to the `LovyanGFX` folder).
+11. **Upload Code:** Open `lastFmNowPlaying/lastFmNowPlaying.ino` in the Arduino IDE and click Upload.
+
+### Project structure (lastFmNowPlaying folder)
+
+| File | Role |
+|------|------|
+| `lastFmNowPlaying.ino` | Main sketch: `setup()` and `loop()` only. |
+| `config.example.h` | Template for credentials — copy to `config.h` and edit. |
+| `config.h` | Your WiFi and API keys (create from example; **do not commit**). |
+| `apiConfig.h` | Last.fm and Cover Art Archive API constants. |
+| `userSettings.h` | Display size, refresh interval, layout, typography. |
+| `LGFX.h` | LovyanGFX panel/bus configuration for your board. |
+| `WiFiManager.h` / `.cpp` | Serial init, WiFi connect, NTP sync, reconnect. |
+| `Display.h` / `Display.cpp` | TFT init, “now playing” screen, text/cover drawing. |
+| `fetch.h` / `Fetch.cpp` | HTTP JSON fetch, album cover URL resolution (Last.fm, CAA, JPG converter). |
+| `LastFmApp.h` / `LastFmApp.cpp` | Fetch + display logic, display on/off timeout, track change detection. |
 
 ## Configuration
 
 Before uploading, you **must** configure your WiFi and Last.fm details:
 
-1.  **Get Last.fm API Key:**
-    * You need a Last.fm account.
-    * Go to [https://www.last.fm/api/account/create](https://www.last.fm/api/account/create) to create an API account.
-    * Note down your **API Key**.
-2.  **Rename Config File:**
-    * In the project folder, rename `config.example.h` to `config.h`.
+1.  **Get a Last.fm API Key:** Create an account and an API key at [https://www.last.fm/api/account/create](https://www.last.fm/api/account/create).
+2.  **Create `config.h`:**
+    * In the `lastFmNowPlaying` folder, copy `config.example.h` to `config.h`.
 3.  **Edit `config.h`:**
-    * Open `config.h`.
-    * Uncomment whole file.
-    * Replace value for `"WIFI_SSID"` with your WiFi network name (SSID).
-    * Replace value for `"WIFI_PASSWORD"` with your WiFi password.
-    * Replace `"LASTFM_APIKEY"` with your Last.fm API Key.
-    * Replace `"LASTFM_USERNAME"` with your Last.fm username.
-4.  **Save the files.** Now you're ready to upload!
+    * Set `WIFI_SSID` and `WIFI_PASSWORD` to your WiFi credentials.
+    * Set `LASTFM_APIKEY` and `LASTFM_USERNAME` to your Last.fm API key and username.
+    * Optionally set the JPG converter and bucket URLs if you use the progressive-JPG converter (see Troubleshooting).
+4.  **Save the files.** You can then upload the sketch.
 
 ## Troubleshooting & Notes
 

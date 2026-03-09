@@ -3,3 +3,6 @@ todo
 src/config.h
 old
 shortcuts
+.serena
+.serena/**
+*.backup.h

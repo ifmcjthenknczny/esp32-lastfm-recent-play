@@ -1,41 +1,36 @@
-#include "userSettings.h"
+#ifndef DISPLAY_H
+#define DISPLAY_H
 
-const int ELLIPSIS_LEN = 3;
-const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LEN;
+#include <ArduinoJson.h>
 
-struct ReplaceRule {
-    const char* from;
-    const char* to;
-};
+/** Initialize TFT (LovyanGFX), rotation, font, and show boot info. */
+void displayInit();
 
-const ReplaceRule REPLACE_RULES[] = {
-    {"’", "'"},
-    {"“", "\""},
-    {"”", "\""},
-    {"…", "..."},
-    {"–", "-"},
-    {"—", "-"},
-};
+/** Clear and show full "now playing" screen. */
+void displayUpdate(
+    const char* artistName,
+    const char* songName,
+    const char* albumName,
+    const char* albumCoverUrl,
+    bool isPlaying
+);
 
-String adjustTrackInfo(String label) {
-    for (const auto& rule : REPLACE_RULES) {
-        label.replace(rule.from, rule.to);
-    }
-    if (label.length() > MAX_CHARS_IN_LINE) {
-        label = label.substring(0, MAX_STRING_LENGTH);
-        label.trim();
-        return label + "...";
-    }
+/** Update only the play/pause icon (no full redraw). */
+void displayUpdatePlayIcon(bool isPlaying);
 
-    return label;
-}
+/** Show "No recent tracks" message. */
+void displayShowNoTracks();
 
-float calculateAlbumCoverScale (String coverUrl) {
-    int expectedCoverSize = 300;
-    if (coverUrl.startsWith("https://playing-now-album-covers.s3.eu-central-1.amazonaws.com") || coverUrl.endsWith(".png")) {
-        expectedCoverSize = 300;
-    } else if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
-        expectedCoverSize = 250;
-    }
-    return ALBUM_COVER_SIZE_PX / expectedCoverSize;
-}
+/** Show "WiFi reconnecting" message (caller clears screen first if needed). */
+void displayShowWifiReconnecting();
+
+/** Show "Getting Last.fm data..." and clear screen. */
+void displayShowFetching();
+
+/** Trim/replace text for display; returns adjusted string (may truncate with "..."). */
+String displayAdjustTrackText(const String& text);
+
+/** Scale factor for album cover from URL (PNG vs JPG sizes). */
+float displayAlbumCoverScale(const String& coverUrl);
+
+#endif
