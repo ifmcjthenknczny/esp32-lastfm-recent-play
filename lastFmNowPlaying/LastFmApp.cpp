@@ -16,9 +16,9 @@ String lastDisplayedTrack;
 bool displayActive = true;
 unsigned long lastActivityTime = 0;
 
-bool fetchRecentTrack(JsonObject& outTrack) {
+bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
-    DynamicJsonDocument doc = fetchJson(url.c_str());
+    doc = fetchJson(url.c_str());
     if (doc.isNull()) return false;
 
     JsonObject recenttracks = doc["recenttracks"];
@@ -80,8 +80,9 @@ bool shouldRedrawDisplay(const String& artist, const String& track) {
 }  // namespace
 
 void lastFmFetchAndDisplay() {
+    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
     JsonObject track;
-    if (!fetchRecentTrack(track)) return;
+    if (!fetchRecentTrack(doc, track)) return;
 
     bool isPlaying = isTrackNowPlaying(track);
     updateLastActivityTime(track, isPlaying);
