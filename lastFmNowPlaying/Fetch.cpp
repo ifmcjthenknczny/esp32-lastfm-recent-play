@@ -8,12 +8,13 @@
 
 static const int MAX_REDIRECTS = 8;
 
-DynamicJsonDocument fetchJson(const char* initialUrl) {
-    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
+void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
+    outDoc.clear();
+    yield();
 
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[fetch] WiFi not connected.");
-        return doc;
+        return;
     }
 
     HTTPClient http;
@@ -21,27 +22,29 @@ DynamicJsonDocument fetchJson(const char* initialUrl) {
     int redirectCount = 0;
 
     while (redirectCount <= MAX_REDIRECTS) {
+        yield();
         if (!http.begin(currentUrl)) {
             if (http.connected()) http.end();
-            return doc;
+            return;
         }
         http.setUserAgent("ESP32-HTTP-Client");
         int httpCode = http.GET();
+        yield();
 
         if (httpCode == HTTP_CODE_OK) {
             WiFiClient* stream = http.getStreamPtr();
             if (stream) {
-                deserializeJson(doc, *stream);
+                deserializeJson(outDoc, *stream);
             }
             http.end();
-            return doc;
+            return;
         }
 
         if (httpCode == HTTP_CODE_MOVED_PERMANENTLY || httpCode == HTTP_CODE_FOUND ||
             httpCode == HTTP_CODE_TEMPORARY_REDIRECT || httpCode == 308) {
             String newUrl = http.getLocation();
             http.end();
-            if (newUrl.length() == 0 || newUrl == currentUrl) return doc;
+            if (newUrl.length() == 0 || newUrl == currentUrl) return;
             currentUrl = newUrl;
             redirectCount++;
             continue;
@@ -52,10 +55,9 @@ DynamicJsonDocument fetchJson(const char* initialUrl) {
         } else if (http.connected()) {
             http.end();
         }
-        return doc;
+        return;
     }
     if (http.connected()) http.end();
-    return doc;
 }
 
 static String findFinalImageUrl(const char* initialUrl) {
@@ -115,13 +117,15 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid,
     return result;
 }
 
+static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);  // reused for CAA fetch to avoid per-call allocation
+
 static String getMusicbrainzImageUrl(const String& mbid) {
     if (mbid.length() == 0) return "";
     String url = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
-    DynamicJsonDocument doc = fetchJson(url.c_str());
-    if (doc.isNull()) return "";
+    fetchJson(url.c_str(), docCaa);
+    if (docCaa.isNull()) return "";
 
-    JsonObject root = doc.as<JsonObject>();
+    JsonObject root = docCaa.as<JsonObject>();
     if (!root.containsKey("images") || !root["images"].is<JsonArray>() || root["images"].size() == 0) {
         return "";
     }

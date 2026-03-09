@@ -18,7 +18,7 @@ unsigned long lastActivityTime = 0;
 
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
-    doc = fetchJson(url.c_str());
+    fetchJson(url.c_str(), doc);
     if (doc.isNull()) return false;
 
     JsonObject recenttracks = doc["recenttracks"];

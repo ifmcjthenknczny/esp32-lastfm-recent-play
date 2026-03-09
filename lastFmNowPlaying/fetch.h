@@ -3,8 +3,8 @@
 
 #include <ArduinoJson.h>
 
-/** Fetch URL and parse response as JSON. Returns empty doc on failure. */
-DynamicJsonDocument fetchJson(const char* url);
+/** Fetch URL and parse response as JSON into outDoc. Clears/fills outDoc; no extra allocation. */
+void fetchJson(const char* url, DynamicJsonDocument& outDoc);
 
 /** Resolve album cover image URL from Last.fm track object (may use CAA or JPG converter). */
 String resolveAlbumCoverUrl(JsonObject track);
