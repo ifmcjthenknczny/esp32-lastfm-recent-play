@@ -64,7 +64,7 @@ public:
         { // Display backlight configuration
             auto cfg = _light_instance.config();
 
-            cfg.pin_bl = 32;            // Pin number to which the backlight is connected
+            cfg.pin_bl = 0;            // Pin number to which the backlight is connected
             cfg.invert = false;         // True to invert the brightness of the backlight
             cfg.freq   = 44100;         // Backlight PWM frequency
             cfg.pwm_channel = 7;        // PWM channel number to use

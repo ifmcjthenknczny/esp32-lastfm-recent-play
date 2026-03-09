@@ -58,6 +58,7 @@ void manageDisplayActive(bool isPlaying) {
         displayActive = true;
         lastDisplayedArtist = "";
         lastDisplayedTrack = "";
+        tft.setBrightness(255);
         Serial.println("Display ON");
     }
     if (!isPlaying && displayActive) {
@@ -66,7 +67,7 @@ void manageDisplayActive(bool isPlaying) {
             displayActive = false;
             lastDisplayedArtist = "";
             lastDisplayedTrack = "";
-            tft.clear(TFT_BLACK);
+            tft.setBrightness(0);
             Serial.println("Display OFF");
         }
     }
