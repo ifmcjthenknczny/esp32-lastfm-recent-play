@@ -1,5 +1,7 @@
 # ESP32 CYD Last.fm Now Playing Display
 
+> Do you even scrobble, bro?
+
 Showcase your musical taste in real-time! This project turns the inexpensive 2.2 inch ESP32-2432S022c (Cheap Yellow Display - CYD) into a dedicated Last.fm "Now Playing" display. It connects via WiFi, grabs your latest track info (artist, title, album) and album art from the Last.fm API, and puts it right onto the screen.
 
 ![Working device without case](public/working.jpg) 
