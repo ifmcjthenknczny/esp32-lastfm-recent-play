@@ -60,14 +60,12 @@ void manageDisplayActive(bool isPlaying) {
         unsigned long elapsed = (unsigned long)time(nullptr) - lastPlayingTime;
 
         if (elapsed > DISPLAY_OFF_MS / 1000) {
-            displayActive = false;
-            lastDisplayedArtist = "";
-            lastDisplayedTrack = "";
             tft.setBrightness(0);
+            displayActive = false;
             Serial.println("Display OFF");
         }
         else if (elapsed > DISPLAY_DIM_MS / 1000) {
-            tft.setBrightness(128);
+            tft.setBrightness(96);
             Serial.println("Display DIM");
         }
     }
