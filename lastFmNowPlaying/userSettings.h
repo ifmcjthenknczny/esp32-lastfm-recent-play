@@ -8,6 +8,7 @@ const int SCREEN_HEIGHT_PX = 240;
 // --- Refresh & power saving ---
 const int REFRESH_MS = 5000;
 const unsigned long DISPLAY_OFF_MS = 30000;
+const unsigned long DISPLAY_DIM_MS = 10000;
 
 // --- Layout ---
 const int  TEXT_START_HEIGHT_PX   = 136;
