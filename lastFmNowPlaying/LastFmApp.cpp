@@ -62,16 +62,17 @@ void manageDisplayActive(bool isPlaying) {
     }
     if (!isPlaying && displayActive) {
         unsigned long elapsed = (unsigned long)time(nullptr) - lastActivityTime;
-        if (elapsed > DISPLAY_DIM_MS / 1000) {
-            tft.setBrightness(128);
-            Serial.println("Display DIM");
-        }
-        else if (elapsed > DISPLAY_OFF_MS / 1000) {
+
+        if (elapsed > DISPLAY_OFF_MS / 1000) {
             displayActive = false;
             lastDisplayedArtist = "";
             lastDisplayedTrack = "";
             tft.setBrightness(0);
             Serial.println("Display OFF");
+        }
+        else if (elapsed > DISPLAY_DIM_MS / 1000) {
+            tft.setBrightness(128);
+            Serial.println("Display DIM");
         }
     }
 }
