@@ -24,8 +24,9 @@ Showcase your musical taste in real-time! This project turns the inexpensive 2.2
 * **Album Cover Art:** Fetches and renders album covers (JPG or PNG).
 * **Budget-Friendly Hardware:** Runs on the inexpensive ESP32-2432S022c (specifically the 2.2" CYD version).
 * **WiFi Connectivity:** Connects to your wireless network.
-* **Optimized Updates:** Checks if the track has actually changed before redrawing the screen, saving resources and preventing flicker.
-* **Powerful Graphics:** Uses the `LovyanGFX` library for smooth TFT display driving – **this is crucial for this specific board!**
+* **Optimized Updates:** Checks if the track has actually changed before redrawing the screen, saving resources and preventing flicker. If next track from the same album is played - software only rewrites track, not refreshing whole screen.
+* **Energy saving:** Turns off the screen if the music is not playing for 30+ seconds.
+* **Powerful Graphics:** Uses the `LovyanGFX` library for smooth TFT display driving.
 * **Status Feedback:** Shows WiFi connection progress and error messages directly on the TFT.
 
 ## Hardware Requirements

@@ -14,7 +14,6 @@ namespace {
 String lastDisplayedArtist;
 String lastDisplayedTrack;
 String lastDisplayedAlbum;
-String lastDisplayedCoverUrl;
 bool displayActive = true;
 unsigned long lastActivityTime = 0;
 
@@ -90,13 +89,12 @@ void lastFmFetchAndDisplay() {
     String albumName  = track["album"]["#text"] | "Unknown Album";
     String coverUrl   = getAlbumCoverUrl(track);
 
-    bool coverChanged  = (coverUrl != lastDisplayedCoverUrl);
     bool artistChanged = (artistName != lastDisplayedArtist);
     bool trackChanged  = (songName != lastDisplayedTrack);
     bool albumChanged  = (albumName != lastDisplayedAlbum);
 
-    bool shouldRedrawWholeDisplay = coverChanged || artistChanged || albumChanged;
-    bool shouldRedrawTrackOnly = !coverChanged && !artistChanged && !albumChanged && trackChanged;
+    bool shouldRedrawWholeDisplay = artistChanged || albumChanged;
+    bool shouldRedrawTrackOnly = !artistChanged && !albumChanged && trackChanged;
 
     if (shouldRedrawWholeDisplay) {
         displayUpdate(artistName.c_str(), songName.c_str(), albumName.c_str(),
@@ -110,5 +108,4 @@ void lastFmFetchAndDisplay() {
     lastDisplayedArtist   = artistName;
     lastDisplayedTrack    = songName;
     lastDisplayedAlbum    = albumName;
-    lastDisplayedCoverUrl = coverUrl;
 }
