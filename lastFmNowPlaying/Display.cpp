@@ -7,6 +7,8 @@
 
 extern LGFX tft;
 
+static LGFX_Sprite titleBgSprite(&tft);
+
 namespace {
 
 static const int ELLIPSIS_LEN = 3;
@@ -116,6 +118,26 @@ static void drawPlayIcon(bool isPlaying) {
     }
 }
 
+static void populateTitleBgSprite(const String& coverUrl) {
+    tft.setFont(&myExtendedFont);
+    tft.setTextSize(TRACK_INFO_TEXT_SIZE);
+    const int h = tft.fontHeight();
+
+    titleBgSprite.deleteSprite();
+    if (!titleBgSprite.createSprite(SCREEN_WIDTH_PX, h)) {
+        return;
+    }
+    titleBgSprite.fillSprite(TFT_BLACK);
+
+    const float scale = albumCoverScale(coverUrl);
+    const int spriteY = ALBUM_PADDING_Y_PX - TRACK_VALUE_Y;
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
+        titleBgSprite.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY, 0, 0, 0, 0, scale, scale);
+    } else if (coverUrl.endsWith(".png")) {
+        titleBgSprite.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY, 0, 0, 0, 0, scale, scale);
+    }
+}
+
 void displayUpdate(const char* artistName, const char* songName, const char* albumName,
                    const char* albumCoverUrl, bool isPlaying) {
     tft.startWrite();
@@ -124,16 +146,25 @@ void displayUpdate(const char* artistName, const char* songName, const char* alb
     drawTrackInfo(artistName, songName, albumName);
     drawPlayIcon(isPlaying);
     tft.endWrite();
+
+    populateTitleBgSprite(String(albumCoverUrl));
 }
 
 void displayUpdateTrackNameOnly(const char* songName) {
-    const int w = SCREEN_WIDTH_PX - TEXT_LEFT_PADDING_PX;
-    tft.fillRect(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y, w, VALUE_LINE_PX, TFT_BLACK);
     tft.setFont(&myExtendedFont);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
+
+    if (titleBgSprite.width() > 0) {
+        titleBgSprite.pushSprite(0, TRACK_VALUE_Y);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    } else {
+        tft.fillRect(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y,
+                     SCREEN_WIDTH_PX - TEXT_LEFT_PADDING_PX, tft.fontHeight(), TFT_BLACK);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+
     tft.setCursor(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y);
-    tft.println(adjustTrackText(String(songName)));
+    tft.print(adjustTrackText(String(songName)));
 }
 
 void displayUpdatePlayIcon(bool isPlaying) {
