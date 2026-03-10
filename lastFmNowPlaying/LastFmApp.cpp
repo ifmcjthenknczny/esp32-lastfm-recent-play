@@ -11,10 +11,21 @@ extern LGFX tft;
 
 namespace {
 
+enum class DisplayState { On, Dimmed, Off };
+
+const char* displayStateStr(DisplayState s) {
+    switch (s) {
+        case DisplayState::On:    return "on";
+        case DisplayState::Dimmed: return "dimmed";
+        case DisplayState::Off:   return "off";
+    }
+    return "on";
+}
+
 String lastDisplayedArtist;
 String lastDisplayedTrack;
 String lastDisplayedAlbum;
-bool displayActive = true;
+DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
 
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
@@ -48,25 +59,26 @@ void updateLastPlayingTime(const JsonObject& track, bool isPlaying) {
     }
 }
 
-void manageDisplayActive(bool isPlaying) {
-    if (isPlaying && !displayActive) {
-        displayActive = true;
-        lastDisplayedArtist = "";
-        lastDisplayedTrack = "";
+void manageDisplayState(bool isPlaying) {
+    DisplayState prevState = displayState;
+
+    if (isPlaying && displayState != DisplayState::On) {
         tft.setBrightness(255);
-        Serial.println("Display ON");
+        displayState = DisplayState::On;
+        Serial.println("DISPLAY ON");
     }
-    if (!isPlaying && displayActive) {
+    else if (!isPlaying) {
         unsigned long elapsed = (unsigned long)time(nullptr) - lastPlayingTime;
 
-        if (elapsed > DISPLAY_OFF_MS / 1000) {
+        if (elapsed > DISPLAY_OFF_MS / 1000 && displayState != DisplayState::Off) {
             tft.setBrightness(0);
-            displayActive = false;
-            Serial.println("Display OFF");
+            displayState = DisplayState::Off;
+            Serial.println("DISPLAY OFF");
         }
-        else if (elapsed > DISPLAY_DIM_MS / 1000) {
-            tft.setBrightness(96);
-            Serial.println("Display DIM");
+        else if (elapsed > DISPLAY_DIM_MS / 1000 && displayState != DisplayState::Dimmed) {
+            tft.setBrightness(64);
+            displayState = DisplayState::Dimmed;
+            Serial.println("DISPLAY DIMMED");
         }
     }
 }
@@ -79,9 +91,9 @@ void lastFmFetchAndDisplay() {
 
     bool isPlaying = isTrackNowPlaying(track);
     updateLastPlayingTime(track, isPlaying);
-    manageDisplayActive(isPlaying);
+    manageDisplayState(isPlaying);
 
-    if (!displayActive) return;
+    if (displayState == DisplayState::Off) return;
 
     String artistName = track["artist"]["#text"] | "Unknown Artist";
     String songName   = track["name"] | "Unknown Track";
