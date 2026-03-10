@@ -20,18 +20,16 @@ Showcase your musical taste in real-time! This project turns the inexpensive 2.2
 ## Features
 
 * **Live "Now Playing" Display:** Shows your current Last.fm track in near real-time.
-* **Track Details:** Displays Artist, Track Title, and Album Name.
-* **Album Cover Art:** Fetches and renders album covers (JPG or PNG).
+* **Track Details:** Displays Cover, Artist, Track Title, and Album Name.
+* **Album Cover Art:** Fetches and renders album covers (JPG or PNG) with option to convert progressive JPGs to baseline JPGs.
 * **Budget-Friendly Hardware:** Runs on the inexpensive ESP32-2432S022c (specifically the 2.2" CYD version).
-* **WiFi Connectivity:** Connects to your wireless network.
+* **WiFi Connectivity:** Connects to your wireless network. Shows init WiFi connection progress and error messages directly on the TFT.
 * **Optimized Updates:** Checks if the track has actually changed before redrawing the screen, saving resources and preventing flicker. If next track from the same album is played - software only rewrites track, not refreshing whole screen.
-* **Energy saving:** Turns off the screen if the music is not playing for 30+ seconds.
-* **Powerful Graphics:** Uses the `LovyanGFX` library for smooth TFT display driving.
-* **Status Feedback:** Shows WiFi connection progress and error messages directly on the TFT.
+* **Energy saving:** Dims the screen if music is not playing for 10+ seconds. Turns off the screen if the music is not playing for 30+ seconds.
 
 ## Hardware Requirements
 
-* **Board:** ESP32-2432S022c (The **2.2" 240x320 TFT** version - e.g., from [Temu](https://share.temu.com/P4PLVBPsGsA) for ~$11). Also known as CYD (Cheap Yellow Display).
+* **Board:** ESP32-2432S022c (The **2.2" 240x320 TFT** version - e.g., from [AliExpress](https://aliexpress.com/w/wholesale-esp32-2.2.html?spm=a2g0o.home.search.0) for ~$11). Also known as CYD (Cheap Yellow Display).
 * **Cable:** USB-A to USB-C cable (The manufacturer reportedly advises against USB-C to USB-C cables, so A-to-C is recommended).
 
 ## Software Requirements
