@@ -75,7 +75,7 @@ void manageDisplayState(bool isPlaying) {
             displayState = DisplayState::Off;
             Serial.println("DISPLAY OFF");
         }
-        else if (elapsed > DISPLAY_DIM_MS / 1000 && displayState != DisplayState::Dimmed) {
+        else if (elapsed > DISPLAY_DIM_MS / 1000 && elapsed <= DISPLAY_OFF_MS / 1000 && displayState != DisplayState::Dimmed) {
             tft.setBrightness(64);
             displayState = DisplayState::Dimmed;
             Serial.println("DISPLAY DIMMED");
