@@ -66,7 +66,7 @@ void manageDisplayActive(bool isPlaying) {
             tft.setBrightness(128);
             Serial.println("Display DIM");
         }
-        if (elapsed > DISPLAY_OFF_MS / 1000) {
+        else if (elapsed > DISPLAY_OFF_MS / 1000) {
             displayActive = false;
             lastDisplayedArtist = "";
             lastDisplayedTrack = "";
