@@ -15,7 +15,7 @@ String lastDisplayedArtist;
 String lastDisplayedTrack;
 String lastDisplayedAlbum;
 bool displayActive = true;
-unsigned long lastActivityTime = 0;
+unsigned long lastPlayingTime = 0;
 
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
@@ -42,13 +42,9 @@ bool isTrackNowPlaying(const JsonObject& track) {
            track["@attr"]["nowplaying"].as<String>() == "true";
 }
 
-void updateLastActivityTime(const JsonObject& track, bool isPlaying) {
+void updateLastPlayingTime(const JsonObject& track, bool isPlaying) {
     if (isPlaying) {
-        lastActivityTime = (unsigned long)time(nullptr);
-    } else if (track.containsKey("date") && track["date"].is<JsonObject>() && track["date"].containsKey("uts")) {
-        lastActivityTime = track["date"]["uts"].as<unsigned long>();
-    } else {
-        lastActivityTime = (unsigned long)time(nullptr);
+        lastPlayingTime = (unsigned long)time(nullptr);
     }
 }
 
@@ -61,7 +57,7 @@ void manageDisplayActive(bool isPlaying) {
         Serial.println("Display ON");
     }
     if (!isPlaying && displayActive) {
-        unsigned long elapsed = (unsigned long)time(nullptr) - lastActivityTime;
+        unsigned long elapsed = (unsigned long)time(nullptr) - lastPlayingTime;
 
         if (elapsed > DISPLAY_OFF_MS / 1000) {
             displayActive = false;
@@ -84,7 +80,7 @@ void lastFmFetchAndDisplay() {
     if (!fetchRecentTrack(doc, track)) return;
 
     bool isPlaying = isTrackNowPlaying(track);
-    updateLastActivityTime(track, isPlaying);
+    updateLastPlayingTime(track, isPlaying);
     manageDisplayActive(isPlaying);
 
     if (!displayActive) return;
