@@ -39,15 +39,28 @@ void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
             http.end();
             return;
         }
-        if (isRedirect(code)) {
+        else if (isRedirect(code)) {
             String next = http.getLocation();
             http.end();
             if (next.length() == 0 || next == url) return;
             url = next;
             continue;
         }
-        if (http.connected()) http.end();
-        return;
+        else {
+            String payload = http.getString();
+            DynamicJsonDocument errDoc(512);
+            if (!deserializeJson(errDoc, payload) && errDoc.containsKey("message")) {
+                String msg = errDoc["message"].as<String>();
+                if (errDoc.containsKey("error")) {
+                    Serial.println("fetchJson: error " + String(code) + " - " + msg + " (error: " + String(errDoc["error"].as<int>()) + ")");
+                } else {
+                    Serial.println("fetchJson: error " + String(code) + " - " + msg);
+                }
+            } else {
+                Serial.println("fetchJson: error " + String(code) + " " + http.errorToString(code));
+            }
+            http.end();
+        }
     }
 }
 

@@ -7,7 +7,7 @@
 void displayInit();
 
 /** Clear screen, draw album cover, draw all text, and play icon. */
-void displayUpdate(
+void displayUpdateAll(
     const char* artistName,
     const char* songName,
     const char* albumName,
@@ -17,7 +17,7 @@ void displayUpdate(
 
 void displayUpdateTrackNameOnly(const char* songName);
 
-void displayUpdatePlayIcon(bool isPlaying);
+void displayUpdatePlayIconOnly(bool isPlaying);
 
 /** Show "No recent tracks" message. */
 void displayShowNoTracks();

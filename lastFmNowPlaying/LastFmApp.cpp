@@ -31,16 +31,24 @@ unsigned long lastPlayingTime = 0;
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
     fetchJson(url.c_str(), doc);
-    if (doc.isNull()) return false;
+
+    if (doc.isNull()) {
+        Serial.println("fetchRecentTrack: doc is null");
+        return false;
+    }
 
     JsonObject recenttracks = doc["recenttracks"];
-    if (recenttracks.isNull()) return false;
+    if (recenttracks.isNull()) {
+        Serial.println("fetchRecentTrack: recenttracks is null");
+        return false;
+    }
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
         if (lastDisplayedArtist.length() > 0 || lastDisplayedTrack.length() > 0) {
             displayShowNoTracks();
         }
+        Serial.println("fetchRecentTrack: no tracks");
         return false;
     }
     outTrack = trackArray[0];
@@ -82,41 +90,54 @@ void manageDisplayState(bool isPlaying) {
         }
     }
 }
-}  // namespace
 
-void lastFmFetchAndDisplay() {
-    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
-    JsonObject track;
-    if (!fetchRecentTrack(doc, track)) return;
-
-    bool isPlaying = isTrackNowPlaying(track);
-    updateLastPlayingTime(track, isPlaying);
-    manageDisplayState(isPlaying);
-
-    if (displayState == DisplayState::Off) return;
-
-    String artistName = track["artist"]["#text"] | "Unknown Artist";
-    String songName   = track["name"] | "Unknown Track";
-    String albumName  = track["album"]["#text"] | "Unknown Album";
-    String coverUrl   = getAlbumCoverUrl(track);
-
+void updateDisplay(const String& artistName, const String& songName, const String& albumName,
+                   const String& coverUrl, bool isPlaying) {
     bool artistChanged = (artistName != lastDisplayedArtist);
     bool trackChanged  = (songName != lastDisplayedTrack);
     bool albumChanged  = (albumName != lastDisplayedAlbum);
 
     bool shouldRedrawWholeDisplay = artistChanged || albumChanged;
-    bool shouldRedrawTrackOnly = !artistChanged && !albumChanged && trackChanged;
+    bool shouldRedrawTrackOnly = trackChanged;
 
     if (shouldRedrawWholeDisplay) {
-        displayUpdate(artistName.c_str(), songName.c_str(), albumName.c_str(),
-                      coverUrl.c_str(), isPlaying);
+        displayUpdateAll(artistName.c_str(), songName.c_str(), albumName.c_str(),
+                         coverUrl.c_str(), isPlaying);
     } else if (shouldRedrawTrackOnly) {
         displayUpdateTrackNameOnly(songName.c_str());
     } else {
-        displayUpdatePlayIcon(isPlaying);
+        displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedArtist   = artistName;
-    lastDisplayedTrack    = songName;
-    lastDisplayedAlbum    = albumName;
+    lastDisplayedArtist = artistName;
+    lastDisplayedTrack  = songName;
+    lastDisplayedAlbum  = albumName;
+}
+
+void updateDisplayIfOn(const String& artistName, const String& songName, const String& albumName,
+                       const JsonObject& track, bool isPlaying) {
+    if (displayState == DisplayState::Off) return;
+    String coverUrl = getAlbumCoverUrl(track);
+    updateDisplay(artistName, songName, albumName, coverUrl, isPlaying);
+}
+
+}  // namespace
+
+void lastFmFetchAndDisplay() {
+    DynamicJsonDocument doc(JSON_BUFFER_SIZE);
+    JsonObject track;
+    if (!fetchRecentTrack(doc, track)) {
+        return;
+    }
+
+    String artistName = track["artist"]["#text"] | "Unknown Artist";
+    String songName   = track["name"] | "Unknown Track";
+    String albumName  = track["album"]["#text"] | "Unknown Album";
+    Serial.println(artistName + " - " + songName + " - " + albumName);
+
+    bool isPlaying = isTrackNowPlaying(track);
+    updateLastPlayingTime(track, isPlaying);
+    manageDisplayState(isPlaying);
+
+    updateDisplayIfOn(artistName, songName, albumName, track, isPlaying);
 }

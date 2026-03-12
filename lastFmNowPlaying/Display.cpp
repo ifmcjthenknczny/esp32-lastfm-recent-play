@@ -138,7 +138,7 @@ static void populateTitleBgSprite(const String& coverUrl) {
     }
 }
 
-void displayUpdate(const char* artistName, const char* songName, const char* albumName,
+void displayUpdateAll(const char* artistName, const char* songName, const char* albumName,
                    const char* albumCoverUrl, bool isPlaying) {
     tft.startWrite();
     tft.fillScreen(TFT_BLACK);
@@ -167,7 +167,7 @@ void displayUpdateTrackNameOnly(const char* songName) {
     tft.print(adjustTrackText(String(songName)));
 }
 
-void displayUpdatePlayIcon(bool isPlaying) {
+void displayUpdatePlayIconOnly(bool isPlaying) {
     drawPlayIcon(isPlaying);
 }
 
