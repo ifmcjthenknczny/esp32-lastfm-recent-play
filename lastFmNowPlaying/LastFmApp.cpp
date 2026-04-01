@@ -97,8 +97,8 @@ void updateDisplay(const String& artistName, const String& songName, const Strin
     bool trackChanged  = (songName != lastDisplayedTrack);
     bool albumChanged  = (albumName != lastDisplayedAlbum);
 
-    bool shouldRedrawWholeDisplay = artistChanged || albumChanged;
-    bool shouldRedrawTrackOnly = trackChanged;
+    bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
+    bool shouldRedrawTrackOnly = trackChanged && isPlaying;
 
     if (shouldRedrawWholeDisplay) {
         displayUpdateAll(artistName.c_str(), songName.c_str(), albumName.c_str(),
@@ -116,8 +116,11 @@ void updateDisplay(const String& artistName, const String& songName, const Strin
 
 void updateDisplayIfOn(const String& artistName, const String& songName, const String& albumName,
                        const JsonObject& track, bool isPlaying) {
-    if (displayState == DisplayState::Off) return;
+    if (displayState == DisplayState::Off) {
+        return;
+    }
     String coverUrl = getAlbumCoverUrl(track);
+    Serial.println("coverUrl: " + coverUrl);
     updateDisplay(artistName, songName, albumName, coverUrl, isPlaying);
 }
 

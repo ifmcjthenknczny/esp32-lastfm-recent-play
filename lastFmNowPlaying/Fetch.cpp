@@ -157,11 +157,13 @@ static String trackStr(JsonObject track, const char* key1, const char* key2) {
 String getAlbumCoverUrl(JsonObject track) {
     JsonArray images = track["image"];
     String url = getSuitableAlbumCoverUrlFromLastFmApi(images);
+
     bool hasImages = !images.isNull() && images.size() > 0;
     bool isPng = hasImages && images[0]["#text"].as<String>().endsWith(".png");
 
-    if (hasImages && isPng)
+    if (hasImages && isPng) {
         return url;
+    }
 
     if (hasImages && !isPng && strlen(JPG_CONVERTER_URL) > 0) {
         String converted = getConvertedImageUrl(
@@ -170,12 +172,16 @@ String getAlbumCoverUrl(JsonObject track) {
             trackStr(track, "artist", "#text"),
             trackStr(track, "album", "#text")
         );
-        if (converted.length() > 0) return converted;
+        if (converted.length() > 0) {
+            return converted;
+        }
     }
 
     String mbid = trackStr(track, "album", "mbid");
-    if (mbid.length() > 0)
-        return getMusicbrainzImageUrl(mbid);
+    if (mbid.length() > 0) {
+        String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
+        return musicbrainzUrl;
+    }
 
     return url;
 }
