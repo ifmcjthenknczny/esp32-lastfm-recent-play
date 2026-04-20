@@ -86,7 +86,6 @@ void manageDisplayState(bool isPlaying) {
     const unsigned long now = millis();
     const unsigned long elapsed =
         (lastPlayingTime == 0) ? 0 : (now - lastPlayingTime);
-    Serial.println("elapsed: " + String(elapsed) + "ms");
     bool shouldTurnOn = isPlaying && prevState != DisplayState::On;
     bool shouldTurnOff = !isPlaying && elapsed > DISPLAY_OFF_MS && prevState != DisplayState::Off;
     bool shouldDim = !isPlaying && elapsed <= DISPLAY_OFF_MS && prevState != DisplayState::Dimmed;
