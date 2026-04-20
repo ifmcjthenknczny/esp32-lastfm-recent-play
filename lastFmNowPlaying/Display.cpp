@@ -98,7 +98,7 @@ static void drawLabeledLine(const char* label, const String& info, uint16_t labe
     tft.println();
 }
 
-static void drawTrackInfo(const TrackFields& t) {
+static void drawTrackInfo(const Track& t) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
     drawLabeledLine("Artist", t.artist, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
@@ -140,7 +140,7 @@ static void populateTitleBgSprite(const String& coverUrl) {
 }
 
 void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying) {
-    const TrackFields t = trackFieldsFromJson(track);
+    const Track t = trackFromJson(track);
     tft.startWrite();
     tft.fillScreen(TFT_BLACK);
     drawAlbumCover(String(albumCoverUrl));
@@ -151,7 +151,7 @@ void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool i
 }
 
 void displayUpdateTrackNameOnly(const JsonObject& track) {
-    const TrackFields t = trackFieldsFromJson(track);
+    const Track t = trackFromJson(track);
     tft.setFont(&myExtendedFont);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
 

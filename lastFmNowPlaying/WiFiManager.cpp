@@ -13,7 +13,7 @@ static const int MAX_WIFI_ATTEMPTS = 10;
 static const char* NTP_POOL[] = { "pool.ntp.org", "europe.pool.ntp.org" };
 static const char* TZ_STRING = "CET-1CEST,M3.5.0,M10.5.0/3";
 
-/** Outbound IPv4 seen by the internet (what API Gateway/Lambda logs) — not the same as WiFi.localIP(). */
+/** Outbound IPv4 seen by the internet */
 static String fetchPublicIpv4() {
     HTTPClient http;
     if (!http.begin("http://api.ipify.org")) {

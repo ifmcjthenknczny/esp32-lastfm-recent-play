@@ -22,9 +22,8 @@ const char* displayStateStr(DisplayState s) {
     return "on";
 }
 
-String lastDisplayedArtist;
-String lastDisplayedTrack;
-String lastDisplayedAlbum;
+
+Track lastDisplayedTrackFields;
 DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
 
@@ -53,7 +52,7 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
-        if (lastDisplayedArtist.length() > 0 || lastDisplayedTrack.length() > 0) {
+        if (lastDisplayedTrackFields.artist.length() > 0 || lastDisplayedTrackFields.song.length() > 0) {
             displayShowNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
@@ -105,15 +104,15 @@ void manageDisplayState(bool isPlaying, unsigned long elapsed) {
     }
 }
 
-void logTrackFields(const TrackFields& t) {
+void logTrack(const Track& t) {
     Serial.println(String("Now playing: ") + t.artist + " - " + t.song + " - " + t.album);
 }
 
 void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed) {
-    const TrackFields t = trackFieldsFromJson(track);
-    const bool artistChanged = (t.artist != lastDisplayedArtist);
-    const bool trackChanged  = (t.song != lastDisplayedTrack);
-    const bool albumChanged  = (t.album != lastDisplayedAlbum);
+    const Track t = trackFromJson(track);
+    const bool artistChanged = (t.artist != lastDisplayedTrackFields.artist);
+    const bool trackChanged  = (t.song != lastDisplayedTrackFields.song);
+    const bool albumChanged  = (t.album != lastDisplayedTrackFields.album);
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
@@ -123,19 +122,19 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
         String coverUrl = getAlbumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
         displayUpdateAll(track, coverUrl.c_str(), isPlaying);
-        logTrackFields(t);
     } else if (shouldRedrawTrackOnly) {
         displayUpdateTrackNameOnly(track);
-        logTrackFields(t);
     } 
+
+    if (shouldRedrawWholeDisplay || shouldRedrawTrackOnly) {
+        logTrack(t);
+    }
     
     if (shouldRedrawPlayIcon) {
         displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedArtist = t.artist;
-    lastDisplayedTrack  = t.song;
-    lastDisplayedAlbum  = t.album;
+    lastDisplayedTrackFields = t;
 }
 
 }  // namespace

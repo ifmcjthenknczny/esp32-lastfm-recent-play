@@ -95,7 +95,7 @@ static String findFinalImageUrl(const char* initialUrl) {
     return "";
 }
 
-static String getConvertedImageUrl(const String& imageUrl, const String& mbid, const TrackFields& t) {
+static String getConvertedImageUrl(const String& imageUrl, const String& mbid, const Track& t) {
     if (WiFi.status() != WL_CONNECTED) {
         return "";
     }
@@ -176,7 +176,7 @@ String getAlbumCoverUrl(JsonObject track) {
     }
 
     if (hasImages && !isPng && strlen(JPG_CONVERTER_URL) > 0) {
-        const TrackFields t = trackFieldsFromJson(track);
+        const Track t = trackFromJson(track);
         String converted = getConvertedImageUrl(url, extractNestedTrackInfo(track, "album", "mbid"), t);
         if (converted.length() > 0) {
             return converted;

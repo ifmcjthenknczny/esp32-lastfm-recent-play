@@ -4,13 +4,13 @@
 #include <ArduinoJson.h>
 #include <WString.h>
 
-struct TrackFields {
+struct Track {
     String artist;
     String song;
     String album;
 };
 
-inline TrackFields trackFieldsFromJson(const JsonObject& track) {
+inline Track trackFromJson(const JsonObject& track) {
     return {track["artist"]["#text"] | "Unknown",
             track["name"] | "Unknown",
             track["album"]["#text"] | "Unknown"};
