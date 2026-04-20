@@ -2,6 +2,7 @@
 #include "apiConfig.h"
 #include "fetch.h"
 #include "display.h"
+#include "TrackFields.h"
 #include "userSettings.h"
 #include <ArduinoJson.h>
 #include "LGFX.h"
@@ -11,12 +12,6 @@ extern LGFX tft;
 namespace {
 
 enum class DisplayState { On, Dimmed, Off };
-
-struct TrackFields {
-    String artist;
-    String song;
-    String album;
-};
 
 const char* displayStateStr(DisplayState s) {
     switch (s) {
@@ -32,6 +27,14 @@ String lastDisplayedTrack;
 String lastDisplayedAlbum;
 DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
+
+unsigned long elapsedSinceLastPlayingTime(unsigned long currentTime = 0) {
+    if (lastPlayingTime == 0) {
+        return 0;
+    }
+    unsigned long now = (currentTime == 0) ? millis() : currentTime;
+    return now - lastPlayingTime;
+}
 
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
@@ -66,12 +69,6 @@ bool isTrackNowPlaying(const JsonObject& track) {
            track["@attr"]["nowplaying"].as<String>() == "true";
 }
 
-TrackFields trackFieldsFromJson(const JsonObject& track) {
-    return {track["artist"]["#text"] | "Unknown",
-            track["name"] | "Unknown",
-            track["album"]["#text"] | "Unknown"};
-}
-
 void updateLastPlayingTime() {
     lastPlayingTime = millis();
 }
@@ -80,12 +77,9 @@ int toDisplayBrightness(float brightnessPercent) {
     return static_cast<int>(256.f * brightnessPercent / 100.f - 1.f);
 }
 
-void manageDisplayState(bool isPlaying) {
+void manageDisplayState(bool isPlaying, unsigned long elapsed) {
     DisplayState prevState = displayState;
 
-    const unsigned long now = millis();
-    const unsigned long elapsed =
-        (lastPlayingTime == 0) ? 0 : (now - lastPlayingTime);
     bool shouldTurnOn = prevState != DisplayState::On && isPlaying;
     bool shouldTurnOff = prevState != DisplayState::Off && !isPlaying && elapsed >= DISPLAY_OFF_MS;
     bool shouldDim = prevState != DisplayState::Dimmed && !isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS;
@@ -111,7 +105,7 @@ void logTrackFields(const TrackFields& t) {
     Serial.println(String("Now playing: ") + t.artist + " - " + t.song + " - " + t.album);
 }
 
-void updateDisplay(const JsonObject& track, bool isPlaying) {
+void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed) {
     const TrackFields t = trackFieldsFromJson(track);
     const bool artistChanged = (t.artist != lastDisplayedArtist);
     const bool trackChanged  = (t.song != lastDisplayedTrack);
@@ -119,16 +113,19 @@ void updateDisplay(const JsonObject& track, bool isPlaying) {
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
+    const bool shouldRedrawPlayIcon = isPlaying || (!isPlaying && elapsed >= PLAYING_ICON_UPDATE_DELAY_MS) || shouldRedrawWholeDisplay;
 
     if (shouldRedrawWholeDisplay) {
         String coverUrl = getAlbumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
-        displayUpdateAll(t.artist.c_str(), t.song.c_str(), t.album.c_str(), coverUrl.c_str(), isPlaying);
+        displayUpdateAll(track, coverUrl.c_str(), isPlaying);
         logTrackFields(t);
     } else if (shouldRedrawTrackOnly) {
-        displayUpdateTrackNameOnly(t.song.c_str());
+        displayUpdateTrackNameOnly(track);
         logTrackFields(t);
-    } else {
+    } 
+    
+    if (shouldRedrawPlayIcon) {
         displayUpdatePlayIconOnly(isPlaying);
     }
 
@@ -151,10 +148,16 @@ void lastFmFetchAndDisplay() {
     if (isPlaying) {
         updateLastPlayingTime();
     }
-    manageDisplayState(isPlaying);
+    const unsigned long now = millis();
+    const unsigned long elapsed =
+        elapsedSinceLastPlayingTime(now);
+    Serial.println("elapsed: " + String(elapsed) + " ms");
+    Serial.println("lastPlayingTime: " + String(lastPlayingTime));
+    Serial.println("now: " + String(now));
+    manageDisplayState(isPlaying, elapsed);
 
     if (displayState != DisplayState::On) {
         return;
     }
-    updateDisplay(track, isPlaying);
+    updateDisplay(track, isPlaying, elapsed);
 }

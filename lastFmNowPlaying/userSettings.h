@@ -5,10 +5,13 @@
 const int SCREEN_WIDTH_PX  = 320;
 const int SCREEN_HEIGHT_PX = 240;
 
+// --- Playing icon update delay ---
+const unsigned long PLAYING_ICON_UPDATE_DELAY_MS = 10000;
+
 // --- Refresh & power saving ---
 const int REFRESH_MS = 3000;
-const unsigned long DISPLAY_OFF_MS = 30000;
-const unsigned long DISPLAY_DIM_MS = 10000;
+const unsigned long DISPLAY_OFF_MS = 60000;
+const unsigned long DISPLAY_DIM_MS = 30000;
 
 // --- Display brightness in percent (0–100) ---
 const float DISPLAY_BRIGHTNESS_ON  = 100.f;

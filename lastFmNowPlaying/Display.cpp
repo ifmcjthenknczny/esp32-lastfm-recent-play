@@ -1,4 +1,5 @@
 #include "display.h"
+#include "TrackFields.h"
 #include "LGFX.h"
 #include "userSettings.h"
 #include "apiConfig.h"
@@ -97,14 +98,14 @@ static void drawLabeledLine(const char* label, const String& info, uint16_t labe
     tft.println();
 }
 
-static void drawTrackInfo(const char* artist, const char* song, const char* album) {
+static void drawTrackInfo(const TrackFields& t) {
     tft.setCursor(TEXT_LEFT_PADDING_PX, TEXT_START_HEIGHT_PX);
-    drawLabeledLine("Artist", String(artist), TFT_RED);
+    drawLabeledLine("Artist", t.artist, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-    drawLabeledLine("Track", String(song), TFT_GOLD);
-    if (album && strlen(album) > 0) {
+    drawLabeledLine("Track", t.song, TFT_GOLD);
+    if (t.album.length() > 0) {
         tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
-        drawLabeledLine("Album", String(album), TFT_CYAN);
+        drawLabeledLine("Album", t.album, TFT_CYAN);
     }
 }
 
@@ -138,19 +139,19 @@ static void populateTitleBgSprite(const String& coverUrl) {
     }
 }
 
-void displayUpdateAll(const char* artistName, const char* songName, const char* albumName,
-                   const char* albumCoverUrl, bool isPlaying) {
+void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying) {
+    const TrackFields t = trackFieldsFromJson(track);
     tft.startWrite();
     tft.fillScreen(TFT_BLACK);
     drawAlbumCover(String(albumCoverUrl));
-    drawTrackInfo(artistName, songName, albumName);
-    drawPlayIcon(isPlaying);
+    drawTrackInfo(t);
     tft.endWrite();
 
     populateTitleBgSprite(String(albumCoverUrl));
 }
 
-void displayUpdateTrackNameOnly(const char* songName) {
+void displayUpdateTrackNameOnly(const JsonObject& track) {
+    const TrackFields t = trackFieldsFromJson(track);
     tft.setFont(&myExtendedFont);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
 
@@ -164,7 +165,7 @@ void displayUpdateTrackNameOnly(const char* songName) {
     }
 
     tft.setCursor(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y);
-    tft.print(adjustTrackText(String(songName)));
+    tft.print(adjustTrackText(t.song));
 }
 
 void displayUpdatePlayIconOnly(bool isPlaying) {

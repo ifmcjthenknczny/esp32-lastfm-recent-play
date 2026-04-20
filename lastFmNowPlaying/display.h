@@ -7,15 +7,9 @@
 void displayInit();
 
 /** Clear screen, draw album cover, draw all text, and play icon. */
-void displayUpdateAll(
-    const char* artistName,
-    const char* songName,
-    const char* albumName,
-    const char* albumCoverUrl,
-    bool isPlaying
-);
+void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying);
 
-void displayUpdateTrackNameOnly(const char* songName);
+void displayUpdateTrackNameOnly(const JsonObject& track);
 
 void displayUpdatePlayIconOnly(bool isPlaying);
 

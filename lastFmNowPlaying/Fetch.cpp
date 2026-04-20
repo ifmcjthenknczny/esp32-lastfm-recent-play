@@ -1,6 +1,7 @@
 #include "fetch.h"
 #include "apiConfig.h"
 #include "ConfigDecl.h"
+#include "TrackFields.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -94,21 +95,30 @@ static String findFinalImageUrl(const char* initialUrl) {
     return "";
 }
 
-static String getConvertedImageUrl(const String& imageUrl, const String& mbid,
-                                   const String& artist, const String& album) {
-    if (WiFi.status() != WL_CONNECTED) return "";
+static String getConvertedImageUrl(const String& imageUrl, const String& mbid, const TrackFields& t) {
+    if (WiFi.status() != WL_CONNECTED) {
+        return "";
+    }
 
     StaticJsonDocument<1024> doc;
     doc["imageUrl"] = imageUrl;
-    if (mbid.length())   doc["mbid"]   = mbid;
-    if (artist.length()) doc["artist"] = artist;
-    if (album.length())  doc["album"]  = album;
+    if (mbid.length()) {
+        doc["mbid"] = mbid;
+    }
+    if (t.artist.length()) {
+        doc["artist"] = t.artist;
+    }
+    if (t.album.length()) {
+        doc["album"]  = t.album;
+    }
 
     String body;
     serializeJson(doc, body);
 
     HTTPClient http;
-    if (!http.begin(JPG_CONVERTER_URL)) return "";
+    if (!http.begin(JPG_CONVERTER_URL)) {
+        return "";
+    }
     http.addHeader("Content-Type", "application/json");
     http.addHeader("x-api-key", JPG_CONVERTER_URL_API_KEY);
     http.addHeader("Connection", "close");
@@ -148,7 +158,7 @@ static String getSuitableAlbumCoverUrlFromLastFmApi(JsonArray images) {
     return images[idx]["#text"].as<String>();
 }
 
-static String trackStr(JsonObject track, const char* key1, const char* key2) {
+static String extractNestedTrackInfo(JsonObject track, const char* key1, const char* key2) {
     if (!track.containsKey(key1) || !track[key1].is<JsonObject>() || !track[key1].as<JsonObject>().containsKey(key2))
         return "";
     return track[key1][key2].as<String>();
@@ -166,21 +176,19 @@ String getAlbumCoverUrl(JsonObject track) {
     }
 
     if (hasImages && !isPng && strlen(JPG_CONVERTER_URL) > 0) {
-        String converted = getConvertedImageUrl(
-            url,
-            trackStr(track, "album", "mbid"),
-            trackStr(track, "artist", "#text"),
-            trackStr(track, "album", "#text")
-        );
+        const TrackFields t = trackFieldsFromJson(track);
+        String converted = getConvertedImageUrl(url, extractNestedTrackInfo(track, "album", "mbid"), t);
         if (converted.length() > 0) {
             return converted;
         }
     }
 
-    String mbid = trackStr(track, "album", "mbid");
+    String mbid = extractNestedTrackInfo(track, "album", "mbid");
     if (mbid.length() > 0) {
         String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
-        return musicbrainzUrl;
+        if (musicbrainzUrl.length() > 0) {
+            return musicbrainzUrl;
+        }
     }
 
     return url;
