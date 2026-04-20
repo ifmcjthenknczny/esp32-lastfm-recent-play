@@ -84,6 +84,10 @@ void manageDisplayState(bool isPlaying, unsigned long elapsed) {
     bool shouldTurnOff = prevState != DisplayState::Off && !isPlaying && elapsed >= DISPLAY_OFF_MS;
     bool shouldDim = prevState != DisplayState::Dimmed && !isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS;
 
+    if (!isPlaying) {
+        Serial.println("Not playing. Time elapsed: " + String(elapsed) + " ms");
+    }
+
     if (shouldTurnOn) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
         displayState = DisplayState::On;
@@ -151,9 +155,6 @@ void lastFmFetchAndDisplay() {
     const unsigned long now = millis();
     const unsigned long elapsed =
         elapsedSinceLastPlayingTime(now);
-    Serial.println("elapsed: " + String(elapsed) + " ms");
-    Serial.println("lastPlayingTime: " + String(lastPlayingTime));
-    Serial.println("now: " + String(now));
     manageDisplayState(isPlaying, elapsed);
 
     if (displayState != DisplayState::On) {
