@@ -107,13 +107,15 @@ void manageDisplayState(bool isPlaying) {
     }
 }
 
+void logTrackFields(const TrackFields& t) {
+    Serial.println(String("Now playing: ") + t.artist + " - " + t.song + " - " + t.album);
+}
+
 void updateDisplay(const JsonObject& track, bool isPlaying) {
     const TrackFields t = trackFieldsFromJson(track);
     const bool artistChanged = (t.artist != lastDisplayedArtist);
     const bool trackChanged  = (t.song != lastDisplayedTrack);
     const bool albumChanged  = (t.album != lastDisplayedAlbum);
-
-    Serial.println('Now playing: ' + t.artist + " - " + t.song + " - " + t.album);
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
@@ -122,8 +124,10 @@ void updateDisplay(const JsonObject& track, bool isPlaying) {
         String coverUrl = getAlbumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
         displayUpdateAll(t.artist.c_str(), t.song.c_str(), t.album.c_str(), coverUrl.c_str(), isPlaying);
+        logTrackFields(t);
     } else if (shouldRedrawTrackOnly) {
         displayUpdateTrackNameOnly(t.song.c_str());
+        logTrackFields(t);
     } else {
         displayUpdatePlayIconOnly(isPlaying);
     }

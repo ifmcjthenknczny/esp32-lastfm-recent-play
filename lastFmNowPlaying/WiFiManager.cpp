@@ -1,5 +1,6 @@
 #include "WiFiManager.h"
 #include <WiFi.h>
+#include <HTTPClient.h>
 #include <time.h>
 #include "LGFX.h"
 
@@ -11,6 +12,24 @@ static const unsigned long SERIAL_WAIT_MS = 2000;
 static const int MAX_WIFI_ATTEMPTS = 10;
 static const char* NTP_POOL[] = { "pool.ntp.org", "europe.pool.ntp.org" };
 static const char* TZ_STRING = "CET-1CEST,M3.5.0,M10.5.0/3";
+
+/** Outbound IPv4 seen by the internet (what API Gateway/Lambda logs) — not the same as WiFi.localIP(). */
+static String fetchPublicIpv4() {
+    HTTPClient http;
+    if (!http.begin("http://api.ipify.org")) {
+        return "";
+    }
+    http.setTimeout(10000);
+    const int code = http.GET();
+    if (code != HTTP_CODE_OK) {
+        http.end();
+        return "";
+    }
+    String ip = http.getString();
+    http.end();
+    ip.trim();
+    return ip;
+}
 
 void initSerial() {
     Serial.begin(115200);
@@ -47,16 +66,27 @@ void connect() {
     }
 
     Serial.println("\nConnected to Wi-Fi!");
-    Serial.print("IP Address: ");
+    Serial.print("LAN IP: ");
     Serial.println(WiFi.localIP());
+    const String publicIp = fetchPublicIpv4();
+    Serial.print("Public IP (WAN): ");
+    Serial.println(publicIp.length() ? publicIp : "(fetch failed)");
+
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.println("WiFi Connected!");
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.print("IP: ");
-    tft.println(WiFi.localIP());
+    tft.print(F("LAN: "));
+    tft.println(WiFi.localIP().toString());
+    tft.print(F("Public: "));
+    if (publicIp.length() > 0) {
+        tft.println(publicIp);
+    } else {
+        tft.println(F("(unknown)"));
+    }
 }
+
 
 void syncTime() {
     Serial.println("Configuring time using NTP...");
