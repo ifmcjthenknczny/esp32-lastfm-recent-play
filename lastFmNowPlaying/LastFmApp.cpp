@@ -86,9 +86,9 @@ void manageDisplayState(bool isPlaying) {
     const unsigned long now = millis();
     const unsigned long elapsed =
         (lastPlayingTime == 0) ? 0 : (now - lastPlayingTime);
-    bool shouldTurnOn = isPlaying && prevState != DisplayState::On;
-    bool shouldTurnOff = !isPlaying && elapsed > DISPLAY_OFF_MS && prevState != DisplayState::Off;
-    bool shouldDim = !isPlaying && elapsed <= DISPLAY_OFF_MS && prevState != DisplayState::Dimmed;
+    bool shouldTurnOn = prevState != DisplayState::On && isPlaying;
+    bool shouldTurnOff = prevState != DisplayState::Off && !isPlaying && elapsed >= DISPLAY_OFF_MS;
+    bool shouldDim = prevState != DisplayState::Dimmed && !isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS;
 
     if (shouldTurnOn) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
