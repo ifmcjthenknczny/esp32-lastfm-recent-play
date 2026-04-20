@@ -10,6 +10,11 @@ const int REFRESH_MS = 3000;
 const unsigned long DISPLAY_OFF_MS = 30000;
 const unsigned long DISPLAY_DIM_MS = 10000;
 
+// --- Display brightness in percent (0–100) ---
+const float DISPLAY_BRIGHTNESS_ON  = 100.f;
+const float DISPLAY_BRIGHTNESS_DIM = 25.f;
+const float DISPLAY_BRIGHTNESS_OFF = 0.f;
+
 // --- Layout ---
 const int  TEXT_START_HEIGHT_PX   = 136;
 const int  PLAYICON_PADDING_PX   = 5;

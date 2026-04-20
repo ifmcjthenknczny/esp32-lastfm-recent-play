@@ -4,7 +4,6 @@
 #include "display.h"
 #include "userSettings.h"
 #include <ArduinoJson.h>
-#include <time.h>
 #include "LGFX.h"
 
 extern LGFX tft;
@@ -12,6 +11,12 @@ extern LGFX tft;
 namespace {
 
 enum class DisplayState { On, Dimmed, Off };
+
+struct TrackFields {
+    String artist;
+    String song;
+    String album;
+};
 
 const char* displayStateStr(DisplayState s) {
     switch (s) {
@@ -61,67 +66,72 @@ bool isTrackNowPlaying(const JsonObject& track) {
            track["@attr"]["nowplaying"].as<String>() == "true";
 }
 
-void updateLastPlayingTime(const JsonObject& track, bool isPlaying) {
-    if (isPlaying) {
-        lastPlayingTime = (unsigned long)time(nullptr);
-    }
+TrackFields trackFieldsFromJson(const JsonObject& track) {
+    return {track["artist"]["#text"] | "Unknown",
+            track["name"] | "Unknown",
+            track["album"]["#text"] | "Unknown"};
+}
+
+void updateLastPlayingTime() {
+    lastPlayingTime = millis();
+}
+
+int toDisplayBrightness(float brightnessPercent) {
+    return static_cast<int>(256.f * brightnessPercent / 100.f - 1.f);
 }
 
 void manageDisplayState(bool isPlaying) {
     DisplayState prevState = displayState;
 
-    if (isPlaying && displayState != DisplayState::On) {
-        tft.setBrightness(255);
+    const unsigned long now = millis();
+    const unsigned long elapsed =
+        (lastPlayingTime == 0) ? 0 : (now - lastPlayingTime);
+    Serial.println("elapsed: " + String(elapsed) + "ms");
+    bool shouldTurnOn = isPlaying && prevState != DisplayState::On;
+    bool shouldTurnOff = !isPlaying && elapsed > DISPLAY_OFF_MS && prevState != DisplayState::Off;
+    bool shouldDim = !isPlaying && elapsed <= DISPLAY_OFF_MS && prevState != DisplayState::Dimmed;
+
+    if (shouldTurnOn) {
+        tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
         displayState = DisplayState::On;
         Serial.println("DISPLAY ON");
     }
-    else if (!isPlaying) {
-        unsigned long elapsed = (unsigned long)time(nullptr) - lastPlayingTime;
-
-        if (elapsed > DISPLAY_OFF_MS / 1000 && displayState != DisplayState::Off) {
-            tft.setBrightness(0);
-            displayState = DisplayState::Off;
-            Serial.println("DISPLAY OFF");
-        }
-        else if (elapsed > DISPLAY_DIM_MS / 1000 && elapsed <= DISPLAY_OFF_MS / 1000 && displayState != DisplayState::Dimmed) {
-            tft.setBrightness(64);
-            displayState = DisplayState::Dimmed;
-            Serial.println("DISPLAY DIMMED");
-        }
+    else if (shouldDim) {
+        tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_DIM));
+        displayState = DisplayState::Dimmed;
+        Serial.println("DISPLAY DIMMED");
+    }
+    else if (shouldTurnOff) {
+        tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_OFF));
+        displayState = DisplayState::Off;
+        Serial.println("DISPLAY OFF");
     }
 }
 
-void updateDisplay(const String& artistName, const String& songName, const String& albumName,
-                   const String& coverUrl, bool isPlaying) {
-    bool artistChanged = (artistName != lastDisplayedArtist);
-    bool trackChanged  = (songName != lastDisplayedTrack);
-    bool albumChanged  = (albumName != lastDisplayedAlbum);
+void updateDisplay(const JsonObject& track, bool isPlaying) {
+    const TrackFields f = trackFieldsFromJson(track);
+    const bool artistChanged = (f.artist != lastDisplayedArtist);
+    const bool trackChanged  = (f.song != lastDisplayedTrack);
+    const bool albumChanged  = (f.album != lastDisplayedAlbum);
 
-    bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
-    bool shouldRedrawTrackOnly = trackChanged && isPlaying;
+    Serial.println('Now playing: ' + artistName + " - " + songName + " - " + albumName);
+
+    const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
+    const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
 
     if (shouldRedrawWholeDisplay) {
-        displayUpdateAll(artistName.c_str(), songName.c_str(), albumName.c_str(),
-                         coverUrl.c_str(), isPlaying);
+        String coverUrl = getAlbumCoverUrl(track);
+        Serial.println("coverUrl: " + coverUrl);
+        displayUpdateAll(f.artist.c_str(), f.song.c_str(), f.album.c_str(), coverUrl.c_str(), isPlaying);
     } else if (shouldRedrawTrackOnly) {
-        displayUpdateTrackNameOnly(songName.c_str());
+        displayUpdateTrackNameOnly(f.song.c_str());
     } else {
         displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedArtist = artistName;
-    lastDisplayedTrack  = songName;
-    lastDisplayedAlbum  = albumName;
-}
-
-void updateDisplayIfOn(const String& artistName, const String& songName, const String& albumName,
-                       const JsonObject& track, bool isPlaying) {
-    if (displayState == DisplayState::Off) {
-        return;
-    }
-    String coverUrl = getAlbumCoverUrl(track);
-    Serial.println("coverUrl: " + coverUrl);
-    updateDisplay(artistName, songName, albumName, coverUrl, isPlaying);
+    lastDisplayedArtist = f.artist;
+    lastDisplayedTrack  = f.song;
+    lastDisplayedAlbum  = f.album;
 }
 
 }  // namespace
@@ -133,14 +143,15 @@ void lastFmFetchAndDisplay() {
         return;
     }
 
-    String artistName = track["artist"]["#text"] | "Unknown Artist";
-    String songName   = track["name"] | "Unknown Track";
-    String albumName  = track["album"]["#text"] | "Unknown Album";
-    Serial.println(artistName + " - " + songName + " - " + albumName);
+    const bool isPlaying = isTrackNowPlaying(track);
 
-    bool isPlaying = isTrackNowPlaying(track);
-    updateLastPlayingTime(track, isPlaying);
+    if (isPlaying) {
+        updateLastPlayingTime();
+    }
     manageDisplayState(isPlaying);
 
-    updateDisplayIfOn(artistName, songName, albumName, track, isPlaying);
+    if (displayState != DisplayState::On) {
+        return;
+    }
+    updateDisplay(track, isPlaying);
 }

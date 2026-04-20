@@ -6,3 +6,4 @@ shortcuts
 .serena
 .serena/**
 *.backup.h
+*.stackdump
