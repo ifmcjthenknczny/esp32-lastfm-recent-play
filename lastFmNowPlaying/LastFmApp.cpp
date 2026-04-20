@@ -109,12 +109,12 @@ void manageDisplayState(bool isPlaying) {
 }
 
 void updateDisplay(const JsonObject& track, bool isPlaying) {
-    const TrackFields f = trackFieldsFromJson(track);
-    const bool artistChanged = (f.artist != lastDisplayedArtist);
-    const bool trackChanged  = (f.song != lastDisplayedTrack);
-    const bool albumChanged  = (f.album != lastDisplayedAlbum);
+    const TrackFields t = trackFieldsFromJson(track);
+    const bool artistChanged = (t.artist != lastDisplayedArtist);
+    const bool trackChanged  = (t.song != lastDisplayedTrack);
+    const bool albumChanged  = (t.album != lastDisplayedAlbum);
 
-    Serial.println('Now playing: ' + artistName + " - " + songName + " - " + albumName);
+    Serial.println('Now playing: ' + t.artist + " - " + t.song + " - " + t.album);
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
@@ -122,16 +122,16 @@ void updateDisplay(const JsonObject& track, bool isPlaying) {
     if (shouldRedrawWholeDisplay) {
         String coverUrl = getAlbumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
-        displayUpdateAll(f.artist.c_str(), f.song.c_str(), f.album.c_str(), coverUrl.c_str(), isPlaying);
+        displayUpdateAll(t.artist.c_str(), t.song.c_str(), t.album.c_str(), coverUrl.c_str(), isPlaying);
     } else if (shouldRedrawTrackOnly) {
-        displayUpdateTrackNameOnly(f.song.c_str());
+        displayUpdateTrackNameOnly(t.song.c_str());
     } else {
         displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedArtist = f.artist;
-    lastDisplayedTrack  = f.song;
-    lastDisplayedAlbum  = f.album;
+    lastDisplayedArtist = t.artist;
+    lastDisplayedTrack  = t.song;
+    lastDisplayedAlbum  = t.album;
 }
 
 }  // namespace
