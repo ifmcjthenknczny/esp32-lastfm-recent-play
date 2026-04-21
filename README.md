@@ -19,14 +19,14 @@ Showcase your musical taste in real-time! This project turns the inexpensive 2.2
 
 ## Features
 
-* **Live "Now Playing" Display:** Near real-time track fetching from Last.fm; the play/pause icon switches after a short delay when playback seems to stop, so brief API glitches do not flicker the UI.
+* **Live "Now Playing" Display:** Near real-time track fetching from Last.fm; the play icon switches after a short delay when playback seems to stop, so brief API glitches do not flicker the UI.
 * **Track Details:** Displays Cover, Artist, Track Title and Album Name.
-* **Album Cover Art:** Fetches and renders album covers (JPG or PNG) with option to convert progressive JPGs to baseline JPGs.
-* **Budget-Friendly Hardware:** Runs on the inexpensive ESP32-2432S022c (specifically the 2.2" CYD version).
-* **WiFi Connectivity:** Connects to your wireless network. Shows init WiFi connection progress and error messages directly on the TFT.
+* **Album Cover Art:** Fetches and renders album covers (JPG or PNG) with option to connect to progressive JPGs to baseline JPGs web converter.
 * **Optimized Updates:** Checks if the track has actually changed before redrawing the screen, saving resources and preventing flicker. If next track from the same album is played - software only rewrites track, not refreshing whole screen.
 * **Energy saving:** Dims the screen if music is not playing for 30+ seconds. Turns off the screen if the music is not playing for 90+ seconds.
-
+* **WiFi Connectivity:** Connects to your wireless network. Shows init WiFi connection progress, device IP address and error messages directly on the TFT.
+* **Budget-Friendly Hardware:** Runs on the inexpensive ESP32-2432S022c (specifically the 2.2" CYD version).
+* **High Customizability:** Offers many configuration options so you can tailor behavior, display, and update strategy to your setup.
 
 ## Hardware Requirements
 
