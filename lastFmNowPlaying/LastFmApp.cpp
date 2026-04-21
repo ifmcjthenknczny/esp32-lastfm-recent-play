@@ -135,7 +135,7 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
         displayUpdateTrackNameOnly(track);
     } 
 
-    if (shouldRedrawWholeDisplay || shouldRedrawTrackOnly) {
+    if (artistChanged || trackChanged || albumChanged) {
         logTrack(t);
     }
     
