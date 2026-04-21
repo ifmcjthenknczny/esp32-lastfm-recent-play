@@ -77,10 +77,17 @@ DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
     if (isPlaying) {
         return DisplayState::On;
     }
-    if (!isPlaying && elapsed >= DISPLAY_OFF_MS) {
+    const bool hasTrackData =
+    lastDisplayedTrack.artist.length() > 0 ||
+    lastDisplayedTrack.song.length() > 0 ||
+    lastDisplayedTrack.album.length() > 0;
+    if (!hasTrackData) {
         return DisplayState::Off;
     }
-    if (!isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS) {
+    if (elapsed >= DISPLAY_OFF_MS) {
+        return DisplayState::Off;
+    }
+    if (elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS) {
         return DisplayState::Dimmed;
     }
     return displayState;
