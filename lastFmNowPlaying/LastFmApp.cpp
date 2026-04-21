@@ -13,16 +13,6 @@ namespace {
 
 enum class DisplayState { On, Dimmed, Off };
 
-const char* displayStateStr(DisplayState s) {
-    switch (s) {
-        case DisplayState::On:    return "on";
-        case DisplayState::Dimmed: return "dimmed";
-        case DisplayState::Off:   return "off";
-    }
-    return "on";
-}
-
-
 Track lastDisplayedTrack;
 DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
@@ -73,35 +63,52 @@ void updateLastPlayingTime() {
 }
 
 int toDisplayBrightness(float brightnessPercent) {
-    return static_cast<int>(256.f * brightnessPercent / 100.f - 1.f);
+    const int MAX_BRIGHTNESS = 255;
+    int result = static_cast<int>(brightnessPercent * (MAX_BRIGHTNESS / 100.0f));
+
+    if (result < 0) {
+        return 0;
+    }
+    
+    return result > MAX_BRIGHTNESS ? MAX_BRIGHTNESS : result;
+}
+
+DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
+    DisplayState prevState = displayState;
+    if (isPlaying) {
+        return DisplayState::On;
+    }
+    if (!isPlaying && elapsed >= DISPLAY_OFF_MS) {
+        return DisplayState::Off;
+    }
+    if (!isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS) {
+        return DisplayState::Dimmed;
+    }
+    return prevState;
 }
 
 void manageDisplayState(bool isPlaying, unsigned long elapsed) {
     DisplayState prevState = displayState;
 
-    bool shouldTurnOn = prevState != DisplayState::On && isPlaying;
-    bool shouldTurnOff = prevState != DisplayState::Off && !isPlaying && elapsed >= DISPLAY_OFF_MS;
-    bool shouldDim = prevState != DisplayState::Dimmed && !isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS;
+    DisplayState newState = computeDisplayState(isPlaying, elapsed);
 
     if (!isPlaying) {
         Serial.println("Not playing. Time elapsed: " + String(elapsed) + " ms");
     }
 
-    if (shouldTurnOn) {
+    if (newState == DisplayState::On && prevState != DisplayState::On) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
-        displayState = DisplayState::On;
         Serial.println("DISPLAY ON");
     }
-    else if (shouldDim) {
+    else if (newState == DisplayState::Dimmed && prevState != DisplayState::Dimmed) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_DIM));
-        displayState = DisplayState::Dimmed;
         Serial.println("DISPLAY DIMMED");
     }
-    else if (shouldTurnOff) {
+    else if (newState == DisplayState::Off && prevState != DisplayState::Off) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_OFF));
-        displayState = DisplayState::Off;
         Serial.println("DISPLAY OFF");
     }
+    displayState = newState;
 }
 
 void logTrack(const Track& t) {

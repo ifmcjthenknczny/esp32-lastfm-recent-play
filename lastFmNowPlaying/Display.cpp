@@ -15,6 +15,11 @@ namespace {
 static const int ELLIPSIS_LEN = 3;
 static const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LEN;
 
+const int LABEL_LINE_PX  = 8;
+const int VALUE_LINE_PX  = 20;
+const int SPACE_LINE_PX  = 8;
+const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX + SPACE_LINE_PX + LABEL_LINE_PX;
+
 struct ReplaceRule {
     const char* from;
     const char* to;
@@ -53,11 +58,6 @@ static float albumCoverScale(const String& coverUrl) {
     }
     return (float)ALBUM_COVER_SIZE_PX / 300.0f;
 }
-
-const int LABEL_LINE_PX  = 8;
-const int VALUE_LINE_PX  = 20;
-const int SPACE_LINE_PX  = 8;
-const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX + SPACE_LINE_PX + LABEL_LINE_PX;
 
 void displayInit() {
     Serial.println("Initializing TFT with LovyanGFX...");
