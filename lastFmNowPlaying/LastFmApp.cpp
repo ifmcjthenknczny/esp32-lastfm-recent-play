@@ -2,7 +2,7 @@
 #include "apiConfig.h"
 #include "fetch.h"
 #include "display.h"
-#include "TrackFields.h"
+#include "Track.h"
 #include "userSettings.h"
 #include <ArduinoJson.h>
 #include "LGFX.h"
@@ -23,7 +23,7 @@ const char* displayStateStr(DisplayState s) {
 }
 
 
-Track lastDisplayedTrackFields;
+Track lastDisplayedTrack;
 DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
 
@@ -52,7 +52,7 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
-        if (lastDisplayedTrackFields.artist.length() > 0 || lastDisplayedTrackFields.song.length() > 0) {
+        if (lastDisplayedTrack.artist.length() > 0 || lastDisplayedTrack.song.length() > 0) {
             displayShowNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
@@ -110,9 +110,9 @@ void logTrack(const Track& t) {
 
 void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed) {
     const Track t = trackFromJson(track);
-    const bool artistChanged = (t.artist != lastDisplayedTrackFields.artist);
-    const bool trackChanged  = (t.song != lastDisplayedTrackFields.song);
-    const bool albumChanged  = (t.album != lastDisplayedTrackFields.album);
+    const bool artistChanged = (t.artist != lastDisplayedTrack.artist);
+    const bool trackChanged  = (t.song != lastDisplayedTrack.song);
+    const bool albumChanged  = (t.album != lastDisplayedTrack.album);
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
@@ -134,7 +134,7 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
         displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedTrackFields = t;
+    lastDisplayedTrack = t;
 }
 
 }  // namespace

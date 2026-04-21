@@ -1,7 +1,7 @@
 #include "fetch.h"
 #include "apiConfig.h"
 #include "ConfigDecl.h"
-#include "TrackFields.h"
+#include "Track.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
