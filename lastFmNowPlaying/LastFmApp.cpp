@@ -74,7 +74,6 @@ int toDisplayBrightness(float brightnessPercent) {
 }
 
 DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
-    DisplayState prevState = displayState;
     if (isPlaying) {
         return DisplayState::On;
     }
@@ -84,27 +83,30 @@ DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
     if (!isPlaying && elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS) {
         return DisplayState::Dimmed;
     }
-    return prevState;
+    return displayState;
 }
 
 void manageDisplayState(bool isPlaying, unsigned long elapsed) {
-    DisplayState prevState = displayState;
-
     DisplayState newState = computeDisplayState(isPlaying, elapsed);
+    const bool hasStateChanged = (newState != displayState);
 
     if (!isPlaying) {
         Serial.println("Not playing. Time elapsed: " + String(elapsed) + " ms");
     }
 
-    if (newState == DisplayState::On && prevState != DisplayState::On) {
+    if (!hasStateChanged) {
+        return;
+    }
+
+    if (newState == DisplayState::On) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
         Serial.println("DISPLAY ON");
     }
-    else if (newState == DisplayState::Dimmed && prevState != DisplayState::Dimmed) {
+    else if (newState == DisplayState::Dimmed) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_DIM));
         Serial.println("DISPLAY DIMMED");
     }
-    else if (newState == DisplayState::Off && prevState != DisplayState::Off) {
+    else if (newState == DisplayState::Off) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_OFF));
         Serial.println("DISPLAY OFF");
     }
