@@ -125,7 +125,7 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
 
     const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
-    const bool shouldRedrawPlayIcon = isPlaying || (!isPlaying && elapsed >= PLAYING_ICON_UPDATE_DELAY_MS) || shouldRedrawWholeDisplay;
+    const bool shouldRedrawPlayIcon = isPlaying || (!isPlaying && elapsed >= PLAYING_ICON_UPDATE_DELAY_MS);
 
     if (shouldRedrawWholeDisplay) {
         String coverUrl = getAlbumCoverUrl(track);
