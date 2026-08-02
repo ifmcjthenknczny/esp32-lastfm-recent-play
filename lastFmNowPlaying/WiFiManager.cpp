@@ -68,7 +68,7 @@ void connect() {
     Serial.println("\nConnected to Wi-Fi!");
 
     String localIp = WiFi.localIP().toString();
-    Serial.print("LAN IP: ");
+    Serial.print("Local IP: ");
     Serial.println(localIp);
 
     String gatewayIp = WiFi.gatewayIP().toString();
@@ -90,7 +90,7 @@ void connect() {
 
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
-    tft.print(F("LAN: "));
+    tft.print(F("Local: "));
     tft.println(localIp);
 
     tft.print(F("Public: "));
