@@ -66,8 +66,19 @@ void connect() {
     }
 
     Serial.println("\nConnected to Wi-Fi!");
+
+    String localIp = WiFi.localIP().toString();
     Serial.print("LAN IP: ");
-    Serial.println(WiFi.localIP());
+    Serial.println(localIp);
+
+    String gatewayIp = WiFi.gatewayIP().toString();
+    Serial.print("Gateway IP: ");
+    Serial.println(gatewayIp);
+
+    String dnsIp = WiFi.dnsIP().toString();
+    Serial.print("DNS IP: ");
+    Serial.println(dnsIp);
+
     const String publicIp = fetchPublicIpv4();
     Serial.print("Public IP (WAN): ");
     Serial.println(publicIp.length() ? publicIp : "(fetch failed)");
@@ -76,15 +87,24 @@ void connect() {
     tft.setCursor(0, 0);
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
     tft.println("WiFi Connected!");
+
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
     tft.print(F("LAN: "));
-    tft.println(WiFi.localIP().toString());
+    tft.println(localIp);
+
     tft.print(F("Public: "));
     if (publicIp.length() > 0) {
         tft.println(publicIp);
     } else {
         tft.println(F("(unknown)"));
     }
+
+    tft.print(F("Gateway: "));
+    tft.println(gatewayIp);
+
+    tft.print(F("DNS: "));
+    tft.println(dnsIp);
 }
 
 

@@ -1,8 +1,3 @@
-/*
- * Last.fm Now Playing — ESP32 CYD (Cheap Yellow Display)
- * Main sketch: setup and loop only.
- */
-
 #include <time.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
