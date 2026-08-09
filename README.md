@@ -30,7 +30,7 @@ Showcase your musical taste in real-time! This project turns the inexpensive 2.2
 
 ## Hardware Requirements
 
-* **Board:** ESP32-2432S022c (The **2.2" 240x320 TFT** version - e.g., from [AliExpress](https://aliexpress.com/w/wholesale-esp32-2.2.html?spm=a2g0o.home.search.0) for ~$11). Also known as CYD (Cheap Yellow Display).
+* **Board:** ESP32-2432S022c (The **2.2" 240x320 TFT** version - e.g. from [AliExpress](https://aliexpress.com/w/wholesale-esp32-2.2.html?spm=a2g0o.home.search.0) for ~$11). Also known as CYD (Cheap Yellow Display).
 * **Cable:** USB-A to USB-C cable (The manufacturer reportedly advises against USB-C to USB-C cables, so A-to-C is recommended).
 
 ## Software Requirements
@@ -55,9 +55,7 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
 3.  **Add ESP32 Boards Manager URL:**
     * In Arduino IDE, go to: `File` > `Preferences`.
     * In the "Additional Boards Manager URLs" field, paste the following link:
-        ```
-        [https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json](https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json)
-        ```
+        [ESP32 board manager](https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json)
     * Click OK.
 4.  **Install ESP32 Boards:**
     * Go to: `Tools` > `Board` > `Boards Manager...`.
@@ -107,13 +105,16 @@ Before uploading, you **must** configure your WiFi and Last.fm details:
 
 ## Troubleshooting & Notes
 
-* **Display Issues:** **USE LOVYANGFX!** Seriously, this is the most common issue. Don't use TFT_eSPI examples for this board/code. Double-check your `LGFX.h` or LovyanGFX setup is correct for the `esp32-2432s022c` (2.2 inch version). Board versions (2.2" vs 2.4"/2.8") can have different pinouts or drivers!
-* **Connection Problems:** Verify WiFi SSID and password in `config.h`. Check your WiFi signal strength. Ensure the CH340 driver is correctly installed if uploads fail or the serial monitor doesn't connect.
+* **Display Issues:** **USE LOVYANGFX!** Don't use TFT_eSPI examples for this board/code. Double-check your `LGFX.h` or LovyanGFX setup is correct for the `esp32-2432s022c` (2.2 inch version). Board versions (2.2" vs 2.4"/2.8") can have different pinouts or drivers.
+
+* **Connection Problems:** Verify WiFi SSID and password in `config.h`. Check your WiFi signal strength. Ensure the CH340 driver is correctly installed if uploads fail or the serial monitor doesn't connect. Verify if network is avaliable at IPv4 (ESP32 does not handle IPv6 at all).
+
 * **USB Cable:** Remember the recommendation for USB-A to USB-C.
+
 * **"No recent tracks found":** Make sure you're actively scrobbling on Last.fm and your username/API key in `config.h` are correct. Check the Last.fm API status online if problems persist.
 * **JSON Errors / HTTP Errors:** Could be temporary Last.fm API issues, WiFi instability, or sometimes memory issues (though the code tries to be efficient). Check the Serial Monitor output in Arduino IDE (Tools > Serial Monitor, set baud rate to 115200) for detailed error messages.
 * **Image Loading Failures (`JPG Fail`/`PNG Fail`):** LovyanGFX's `drawJpgUrl`/`drawPngUrl` rely on `HTTPClient`. This should work fine with the standard ESP32 core setup. Ensure the URL from Last.fm is valid (check Serial Monitor). Some complex images or server issues might cause occasional failures. Free RAM is monitored in the serial output around image drawing; very low RAM could be an issue.
-* **Cover Art Archive (CAA) Usage for JPEGs**: While PNG album covers from the Last.fm API generally display without issues, JPEGs present a challenge. Many JPEGs provided directly by Last.fm are in the *progressive* format. Decoding progressive JPEGs demands significantly more RAM than the *baseline* format, often causing memory exhaustion and display failures on constrained devices like the ESP32. Therefore, when a PNG cover isn't available from Last.fm, this application falls back to using the Cover Art Archive (CAA) API (looking up covers via MusicBrainz MBIDs obtained from Last.fm data). The CAA API is preferred in these cases because it typically provides album covers as more memory-friendly *baseline* JPEGs.
+* **Cover Art Archive (CAA) Usage for JPEGs**: While PNG album covers from the Last.fm API generally display without issues, JPEGs present a challenge. Many JPEGs provided directly by Last.fm are in the *progressive* format. Decoding progressive JPEGs demands significantly more RAM than the *baseline* format, often causing memory exhaustion and display failures on constrained devices like the ESP32. Therefore, when a PNG cover isn't available from Last.fm, this application falls back to using the Cover Art Archive (CAA) API (looking up covers via MusicBrainz MBIDs obtained from Last.fm data). The CAA API is preferred in these cases because it typically provides album covers as more memory-friendly *baseline* JPEGs. The other possibility this app presents is usage of external online API for conversion of *progressive* JPEGs to their *baseline* versions.
 * **CAA Redirects**: A challenge with the CAA API is handling HTTP redirects. The initial API request often redirects to the actual image URL. The code includes logic (`findFinalImageUrl` in `helpers.h`) to follow these redirects and obtain the final image link. Occasional failures might still occur due to server issues, complex redirect chains, or temporary network problems.
 
 ## Resources & Links
