@@ -129,7 +129,7 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
     return out;
 }
 
-static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);  // reused for CAA fetch to avoid per-call allocation
+static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);
 
 static String getMusicbrainzImageUrl(const String& mbid) {
     if (mbid.length() == 0) return "";

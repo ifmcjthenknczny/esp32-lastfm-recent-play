@@ -13,7 +13,7 @@ namespace {
 
 enum class DisplayState { On, Dimmed, Off };
 
-Track lastDisplayedTrack;
+Track displayedTrack;
 DisplayState displayState = DisplayState::On;
 unsigned long lastPlayingTime = 0;
 
@@ -42,7 +42,7 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
-        if (lastDisplayedTrack.artist.length() > 0 || lastDisplayedTrack.song.length() > 0) {
+        if (displayedTrack.artist.length() > 0 || displayedTrack.song.length() > 0) {
             displayShowNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
@@ -78,22 +78,22 @@ DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
         return DisplayState::On;
     }
     const bool hasTrackData =
-    lastDisplayedTrack.artist.length() > 0 ||
-    lastDisplayedTrack.song.length() > 0 ||
-    lastDisplayedTrack.album.length() > 0;
+    displayedTrack.artist.length() > 0 ||
+    displayedTrack.song.length() > 0;
+
     if (!hasTrackData) {
         return DisplayState::Off;
     }
     if (elapsed >= DISPLAY_OFF_MS) {
         return DisplayState::Off;
     }
-    if (elapsed >= DISPLAY_DIM_MS && elapsed < DISPLAY_OFF_MS) {
+    else if (elapsed >= DISPLAY_DIM_MS) {
         return DisplayState::Dimmed;
     }
     return displayState;
 }
 
-void manageDisplayState(bool isPlaying, unsigned long elapsed) {
+bool manageDisplayState(bool isPlaying, unsigned long elapsed) {
     DisplayState newState = computeDisplayState(isPlaying, elapsed);
     const bool hasStateChanged = (newState != displayState);
 
@@ -102,8 +102,10 @@ void manageDisplayState(bool isPlaying, unsigned long elapsed) {
     }
 
     if (!hasStateChanged) {
-        return;
+        return false;
     }
+
+    const bool hasWokenUp = hasStateChanged && newState == DisplayState::On;
 
     if (newState == DisplayState::On) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
@@ -118,19 +120,24 @@ void manageDisplayState(bool isPlaying, unsigned long elapsed) {
         Serial.println("DISPLAY OFF");
     }
     displayState = newState;
+    return hasWokenUp;
 }
 
 void logTrack(const Track& t) {
-    Serial.println(String("Now playing: ") + t.artist + " - " + t.song + " - " + t.album);
+    Serial.println("Now playing: " + t.song + " by " + t.artist + (t.album.length() > 0 ? (" from album " + t.album) : ""));
 }
 
-void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed) {
-    const Track t = trackFromJson(track);
-    const bool artistChanged = (t.artist != lastDisplayedTrack.artist);
-    const bool trackChanged  = (t.song != lastDisplayedTrack.song);
-    const bool albumChanged  = (t.album != lastDisplayedTrack.album);
+void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed, DisplayState displayState, bool hasWokenUp) {
+    if (displayState != DisplayState::On) {
+        return;
+    }
 
-    const bool shouldRedrawWholeDisplay = (artistChanged || albumChanged) && isPlaying;
+    const Track t = trackFromJson(track);
+    const bool artistChanged = (t.artist != displayedTrack.artist);
+    const bool trackChanged  = (t.song != displayedTrack.song);
+    const bool albumChanged  = (t.album != displayedTrack.album);
+
+    const bool shouldRedrawWholeDisplay = ((artistChanged || albumChanged) && isPlaying) || hasWokenUp;
     const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
     const bool shouldRedrawPlayIcon = isPlaying || (!isPlaying && elapsed >= PLAYING_ICON_UPDATE_DELAY_MS);
 
@@ -150,7 +157,7 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
         displayUpdatePlayIconOnly(isPlaying);
     }
 
-    lastDisplayedTrack = t;
+    displayedTrack = t;
 }
 
 }  // namespace
@@ -170,10 +177,6 @@ void lastFmFetchAndDisplay() {
     const unsigned long now = millis();
     const unsigned long elapsed =
         elapsedSinceLastPlayingTime(now);
-    manageDisplayState(isPlaying, elapsed);
-
-    if (displayState != DisplayState::On) {
-        return;
-    }
-    updateDisplay(track, isPlaying, elapsed);
+    const bool hasWokenUp = manageDisplayState(isPlaying, elapsed);
+    updateDisplay(track, isPlaying, elapsed, displayState, hasWokenUp);
 }
