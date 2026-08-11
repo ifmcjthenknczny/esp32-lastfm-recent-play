@@ -9,7 +9,7 @@ extern LGFX tft;
 namespace wifi {
 
 static const unsigned long SERIAL_WAIT_MS = 2000;
-static const int MAX_WIFI_ATTEMPTS = 10;
+static const int MAX_WIFI_ATTEMPTS = 3;
 static const char* NTP_POOL[] = { "pool.ntp.org", "europe.pool.ntp.org" };
 static const char* TZ_STRING = "CET-1CEST,M3.5.0,M10.5.0/3";
 
@@ -49,7 +49,7 @@ void connect() {
     int attempts = 0;
 
     while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
+        delay(5000);
         Serial.print(".");
         tft.print(".");
         attempts++;

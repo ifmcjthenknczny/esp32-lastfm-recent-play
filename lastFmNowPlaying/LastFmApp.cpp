@@ -127,7 +127,13 @@ void logTrack(const Track& t) {
     Serial.println("Now playing: " + t.song + " by " + t.artist + (t.album.length() > 0 ? (" from album " + t.album) : ""));
 }
 
-void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapsed, DisplayState displayState, bool hasWokenUp) {
+struct PlaybackContext {
+    bool isPlaying;
+    unsigned long elapsed;
+    bool hasWokenUp;
+};
+
+void updateDisplay(const JsonObject& track, DisplayState displayState, PlaybackContext playback) {
     if (displayState != DisplayState::On) {
         return;
     }
@@ -137,14 +143,14 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
     const bool trackChanged  = (t.song != displayedTrack.song);
     const bool albumChanged  = (t.album != displayedTrack.album);
 
-    const bool shouldRedrawWholeDisplay = ((artistChanged || albumChanged) && isPlaying) || hasWokenUp;
-    const bool shouldRedrawTrackOnly = trackChanged && isPlaying;
-    const bool shouldRedrawPlayIcon = isPlaying || (!isPlaying && elapsed >= PLAYING_ICON_UPDATE_DELAY_MS);
+    const bool shouldRedrawWholeDisplay = ((artistChanged || albumChanged) && playback.isPlaying) || playback.hasWokenUp;
+    const bool shouldRedrawTrackOnly = trackChanged && playback.isPlaying;
+    const bool shouldRedrawPlayIcon = playback.isPlaying || playback.elapsed >= PLAYING_ICON_UPDATE_DELAY_MS;
 
     if (shouldRedrawWholeDisplay) {
         String coverUrl = getAlbumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
-        displayUpdateAll(track, coverUrl.c_str(), isPlaying);
+        displayUpdateAll(track, coverUrl.c_str(), playback.isPlaying);
     } else if (shouldRedrawTrackOnly) {
         displayUpdateTrackNameOnly(track);
     } 
@@ -154,7 +160,7 @@ void updateDisplay(const JsonObject& track, bool isPlaying, unsigned long elapse
     }
     
     if (shouldRedrawPlayIcon) {
-        displayUpdatePlayIconOnly(isPlaying);
+        displayUpdatePlayIcon(playback.isPlaying);
     }
 
     displayedTrack = t;
@@ -178,5 +184,5 @@ void lastFmFetchAndDisplay() {
     const unsigned long elapsed =
         elapsedSinceLastPlayingTime(now);
     const bool hasWokenUp = manageDisplayState(isPlaying, elapsed);
-    updateDisplay(track, isPlaying, elapsed, displayState, hasWokenUp);
+    updateDisplay(track, displayState, {isPlaying, elapsed, hasWokenUp});
 }

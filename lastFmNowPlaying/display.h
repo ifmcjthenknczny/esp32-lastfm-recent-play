@@ -11,7 +11,7 @@ void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool i
 
 void displayUpdateTrackNameOnly(const JsonObject& track);
 
-void displayUpdatePlayIconOnly(bool isPlaying);
+void displayUpdatePlayIcon(bool isPlaying);
 
 /** Show "No recent tracks" message. */
 void displayShowNoTracks();

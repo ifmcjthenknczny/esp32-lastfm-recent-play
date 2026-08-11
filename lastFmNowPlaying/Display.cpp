@@ -168,7 +168,7 @@ void displayUpdateTrackNameOnly(const JsonObject& track) {
     tft.print(adjustTrackText(t.song));
 }
 
-void displayUpdatePlayIconOnly(bool isPlaying) {
+void displayUpdatePlayIcon(bool isPlaying) {
     drawPlayIcon(isPlaying);
 }
 
