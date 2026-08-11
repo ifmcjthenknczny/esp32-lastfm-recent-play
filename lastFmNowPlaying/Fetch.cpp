@@ -2,6 +2,7 @@
 #include "apiConfig.h"
 #include "ConfigDecl.h"
 #include "Track.h"
+#include "userSettings.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
@@ -102,13 +103,13 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
 
     StaticJsonDocument<1024> doc;
     doc["imageUrl"] = imageUrl;
-    if (mbid.length()) {
+    if (mbid.length() > 0) {
         doc["mbid"] = mbid;
     }
-    if (t.artist.length()) {
+    if (t.artist.length() > 0) {
         doc["artist"] = t.artist;
     }
-    if (t.album.length()) {
+    if (t.album.length() > 0) {
         doc["album"]  = t.album;
     }
 
@@ -175,20 +176,26 @@ String getAlbumCoverUrl(JsonObject track) {
         return url;
     }
 
-    if (hasImages && !isPng && strlen(JPG_CONVERTER_URL) > 0) {
+    String mbid = extractNestedTrackInfo(track, "album", "mbid");
+
+    if (mbid.length() == 0) {
+        return url;
+    }
+
+    const bool isLowMemory = ESP.getFreeHeap() < (USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB * 1024);
+    const bool shouldUseJpegConverter = hasImages && !isPng && isLowMemory && strlen(JPG_CONVERTER_URL) > 0;
+
+    if (shouldUseJpegConverter) {
         const Track t = trackFromJson(track);
-        String converted = getConvertedImageUrl(url, extractNestedTrackInfo(track, "album", "mbid"), t);
-        if (converted.length() > 0) {
+        String converted = getConvertedImageUrl(url, mbid, t);
+        if (!converted.isEmpty()) {
             return converted;
         }
     }
 
-    String mbid = extractNestedTrackInfo(track, "album", "mbid");
-    if (mbid.length() > 0) {
-        String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
-        if (musicbrainzUrl.length() > 0) {
-            return musicbrainzUrl;
-        }
+    String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
+    if (!musicbrainzUrl.isEmpty()) {
+        return musicbrainzUrl;
     }
 
     return url;

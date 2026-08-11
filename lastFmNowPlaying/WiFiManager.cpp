@@ -81,7 +81,7 @@ void connect() {
 
     const String publicIp = fetchPublicIpv4();
     Serial.print("Public IP (WAN): ");
-    Serial.println(publicIp.length() ? publicIp : "(fetch failed)");
+    Serial.println(publicIp.length() > 0 ? publicIp : "(fetch failed)");
 
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);

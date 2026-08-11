@@ -2,11 +2,11 @@
 #define USER_SETTINGS_H
 
 // --- Display dimensions ---
-const int SCREEN_WIDTH_PX  = 320;
-const int SCREEN_HEIGHT_PX = 240;
+const unsigned int SCREEN_WIDTH_PX  = 320;
+const unsigned int SCREEN_HEIGHT_PX = 240;
 
 // --- Refresh & power saving ---
-const int REFRESH_MS = 5000;
+const unsigned int REFRESH_MS = 5000;
 const unsigned long DISPLAY_OFF_MS = 90000;
 const unsigned long DISPLAY_DIM_MS = 30000;
 const unsigned long PLAYING_ICON_UPDATE_DELAY_MS = 10000;
@@ -20,7 +20,7 @@ const float DISPLAY_BRIGHTNESS_OFF = 0.f;
 const int  TEXT_START_HEIGHT_PX   = 136;
 const int  PLAYICON_PADDING_PX   = 5;
 const int  TEXT_LEFT_PADDING_PX  = 10;
-const int  ALBUM_COVER_SIZE_PX   = 240;
+const unsigned int  ALBUM_COVER_SIZE_PX   = 240;
 const bool IS_ALBUM_CENTERED     = true;
 
 // Computed at compile time (no mutable globals)
@@ -31,6 +31,9 @@ const int ALBUM_PADDING_Y_PX = IS_ALBUM_CENTERED ? (SCREEN_HEIGHT_PX - ALBUM_COV
 const float TRACK_INFO_TEXT_SIZE      = 1.25f;
 const float TRACK_INFO_LABEL_TEXT_SIZE = 1.0f;
 const float TRACK_INFO_SPACE_SIZE     = 0.5f;
-const int   MAX_CHARS_IN_LINE         = 31;
+const unsigned int   MAX_CHARS_IN_LINE = 31;
+
+// --- JPEG converter ---
+const unsigned int  USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB = 1000;
 
 #endif
