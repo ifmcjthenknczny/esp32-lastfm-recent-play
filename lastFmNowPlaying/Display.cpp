@@ -73,15 +73,10 @@ void displayInit() {
     SCREEN_WIDTH_PX = tft.width();
     SCREEN_HEIGHT_PX = tft.height();
 
-    Serial.println("Display size: " + String(SCREEN_WIDTH_PX) + "x" + String(SCREEN_HEIGHT_PX) + " px");
-
     ALBUM_COVER_SIZE_PX = SCREEN_HEIGHT_PX;
 
     ALBUM_PADDING_X_PX = IS_ALBUM_CENTERED ? (SCREEN_WIDTH_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
     ALBUM_PADDING_Y_PX = IS_ALBUM_CENTERED ? (SCREEN_HEIGHT_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
-
-    Serial.println("Album padding x: " + String(ALBUM_PADDING_X_PX) + " px");
-    Serial.println("Album padding y: " + String(ALBUM_PADDING_Y_PX) + " px");
 
     tft.clear(TFT_BLACK);
     tft.setFont(&myExtendedFont);
@@ -89,8 +84,10 @@ void displayInit() {
     tft.setTextSize(1.25f);
     tft.setCursor(0, 0);
     tft.println("TFT Initialized (LovyanGFX).");
-    tft.println("CPU Frequency: " + String(ESP.getCpuFreqMHz()) + " MHz");
-    tft.println("Free RAM: " + String(ESP.getFreeHeap()) + " bytes");
+    tft.println("Chip model: " + String(ESP.getChipModel()));
+    tft.println("CPU: " + String(ESP.getChipCores()) + "x" + String(ESP.getCpuFreqMHz()) + " MHz");
+    tft.println("RAM: " + String(ESP.getHeapSize()) + " bytes");
+    tft.println("Display size: " + String(SCREEN_WIDTH_PX) + "x" + String(SCREEN_HEIGHT_PX) + " px");
     Serial.println("TFT basics set up.");
 }
 
