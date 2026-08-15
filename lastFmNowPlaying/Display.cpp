@@ -20,6 +20,12 @@ const int VALUE_LINE_PX  = 20;
 const int SPACE_LINE_PX  = 8;
 const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX + SPACE_LINE_PX + LABEL_LINE_PX;
 
+unsigned int SCREEN_WIDTH_PX = 0;
+unsigned int SCREEN_HEIGHT_PX = 0;
+unsigned int ALBUM_COVER_SIZE_PX = 0;
+unsigned int ALBUM_PADDING_X_PX = 0;
+unsigned int ALBUM_PADDING_Y_PX = 0;
+
 struct ReplaceRule {
     const char* from;
     const char* to;
@@ -63,6 +69,20 @@ void displayInit() {
     Serial.println("Initializing TFT with LovyanGFX...");
     tft.init();
     tft.setRotation(1);
+
+    SCREEN_WIDTH_PX = tft.width();
+    SCREEN_HEIGHT_PX = tft.height();
+
+    Serial.println("Display size: " + String(SCREEN_WIDTH_PX) + "x" + String(SCREEN_HEIGHT_PX) + " px");
+
+    ALBUM_COVER_SIZE_PX = SCREEN_HEIGHT_PX;
+
+    ALBUM_PADDING_X_PX = IS_ALBUM_CENTERED ? (SCREEN_WIDTH_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
+    ALBUM_PADDING_Y_PX = IS_ALBUM_CENTERED ? (SCREEN_HEIGHT_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
+
+    Serial.println("Album padding x: " + String(ALBUM_PADDING_X_PX) + " px");
+    Serial.println("Album padding y: " + String(ALBUM_PADDING_Y_PX) + " px");
+
     tft.clear(TFT_BLACK);
     tft.setFont(&myExtendedFont);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);

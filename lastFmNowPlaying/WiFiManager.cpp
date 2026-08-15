@@ -49,7 +49,7 @@ void connect() {
     int attempts = 0;
 
     while (WiFi.status() != WL_CONNECTED) {
-        delay(5000);
+        delay(10000);
         Serial.print(".");
         tft.print(".");
         attempts++;
