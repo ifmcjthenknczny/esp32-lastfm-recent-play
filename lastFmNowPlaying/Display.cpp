@@ -12,8 +12,8 @@ static LGFX_Sprite titleBgSprite(&tft);
 
 namespace {
 
-static const int ELLIPSIS_LEN = 3;
-static const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LEN;
+static const int ELLIPSIS_LENGTH = 3;
+static const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
 
 const int LABEL_LINE_PX  = 8;
 const int VALUE_LINE_PX  = 20;
