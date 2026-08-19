@@ -12,8 +12,8 @@ static LGFX_Sprite titleBgSprite(&tft);
 
 namespace {
 
-static const int ELLIPSIS_LENGTH = 3;
-static const int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
+static const unsigned int ELLIPSIS_LENGTH = 3;
+static const unsigned int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
 
 const int LABEL_LINE_PX  = 8;
 const int VALUE_LINE_PX  = 20;
@@ -84,11 +84,28 @@ void displayInit() {
     tft.setTextSize(1.25f);
     tft.setCursor(0, 0);
     tft.println("TFT Initialized (LovyanGFX).");
-    tft.println("Chip model: " + String(ESP.getChipModel()));
-    tft.println("CPU: " + String(ESP.getChipCores()) + "x" + String(ESP.getCpuFreqMHz()) + " MHz");
-    tft.println("RAM: " + String(ESP.getHeapSize()) + " bytes");
-    tft.println("Display size: " + String(SCREEN_WIDTH_PX) + "x" + String(SCREEN_HEIGHT_PX) + " px");
+    tft.println("");
     Serial.println("TFT basics set up.");
+
+    tft.print("Chip model: ");
+    tft.println(ESP.getChipModel());
+
+    tft.print("CPU: ");
+    tft.print(ESP.getChipCores());
+    tft.print("x");
+    tft.print(ESP.getCpuFreqMHz());
+    tft.println(" MHz");
+
+    tft.print("RAM: ");
+    tft.print(ESP.getHeapSize());
+    tft.println(" bytes");
+
+    tft.print("Display size: ");
+    tft.print(SCREEN_WIDTH_PX);
+    tft.print("x");
+    tft.print(SCREEN_HEIGHT_PX);
+    tft.println(" px");
+    tft.println("");
 }
 
 static void drawAlbumCover(const String& coverUrl) {

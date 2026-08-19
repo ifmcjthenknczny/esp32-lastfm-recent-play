@@ -178,10 +178,6 @@ String getAlbumCoverUrl(JsonObject track) {
 
     String mbid = extractNestedTrackInfo(track, "album", "mbid");
 
-    if (mbid.length() == 0) {
-        return url;
-    }
-
     const bool isLowMemory = ESP.getFreeHeap() < (USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB * 1024);
     const bool shouldUseJpegConverter = hasImages && !isPng && isLowMemory && strlen(JPG_CONVERTER_URL) > 0;
 
@@ -192,6 +188,11 @@ String getAlbumCoverUrl(JsonObject track) {
             return converted;
         }
     }
+
+    if (mbid.length() == 0) {
+        return url;
+    }
+
 
     String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
     if (!musicbrainzUrl.isEmpty()) {
