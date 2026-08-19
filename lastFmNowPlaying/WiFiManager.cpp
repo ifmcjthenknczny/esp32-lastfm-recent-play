@@ -81,7 +81,7 @@ void connect() {
 
     const String publicIp = fetchPublicIpv4();
     Serial.print("Public IP (WAN): ");
-    Serial.println(publicIp.length() > 0 ? publicIp : "(fetch failed)");
+    Serial.println(publicIp.isEmpty() ? "(fetchFailed)" : publicIp);
 
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
@@ -90,20 +90,20 @@ void connect() {
 
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
-    tft.print(F("Local: "));
+    tft.print("Local: ");
     tft.println(localIp);
 
-    tft.print(F("Public: "));
-    if (publicIp.length() > 0) {
-        tft.println(publicIp);
+    tft.print("Public: ");
+    if (publicIp.isEmpty()) {
+        tft.println("(unknown)");
     } else {
-        tft.println(F("(unknown)"));
+        tft.println(publicIp);
     }
 
-    tft.print(F("Gateway: "));
+    tft.print("Gateway: ");
     tft.println(gatewayIp);
 
-    tft.print(F("DNS: "));
+    tft.print("DNS: ");
     tft.println(dnsIp);
 }
 

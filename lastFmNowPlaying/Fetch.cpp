@@ -44,7 +44,7 @@ void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
         else if (isRedirect(code)) {
             String next = http.getLocation();
             http.end();
-            if (next.length() == 0 || next == url) return;
+            if (next.isEmpty() || next == url) return;
             url = next;
             continue;
         }
@@ -90,7 +90,7 @@ static String findFinalImageUrl(const char* initialUrl) {
 
         String next = http.getLocation();
         http.end();
-        if (next.length() == 0 || next == url) return "";
+        if (next.isEmpty() || next == url) return "";
         url = next;
     }
     return "";
@@ -103,13 +103,13 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
 
     StaticJsonDocument<1024> doc;
     doc["imageUrl"] = imageUrl;
-    if (mbid.length() > 0) {
+    if (!mbid.isEmpty()) {
         doc["mbid"] = mbid;
     }
-    if (t.artist.length() > 0) {
+    if (!t.artist.isEmpty()) {
         doc["artist"] = t.artist;
     }
-    if (t.album.length() > 0) {
+    if (!t.album.isEmpty()) {
         doc["album"]  = t.album;
     }
 
@@ -133,7 +133,7 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
 static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);
 
 static String getMusicbrainzImageUrl(const String& mbid) {
-    if (mbid.length() == 0) return "";
+    if (mbid.isEmpty()) return "";
     String url = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
     fetchJson(url.c_str(), docCaa);
     if (docCaa.isNull()) return "";
@@ -189,10 +189,9 @@ String getAlbumCoverUrl(JsonObject track) {
         }
     }
 
-    if (mbid.length() == 0) {
+    if (mbid.isEmpty()) {
         return url;
     }
-
 
     String musicbrainzUrl = getMusicbrainzImageUrl(mbid);
     if (!musicbrainzUrl.isEmpty()) {

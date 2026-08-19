@@ -137,7 +137,7 @@ static void drawTrackInfo(const Track& t) {
     drawLabeledLine("Artist", t.artist, TFT_RED);
     tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
     drawLabeledLine("Track", t.song, TFT_GOLD);
-    if (t.album.length() > 0) {
+    if (!t.album.isEmpty()) {
         tft.setCursor(TEXT_LEFT_PADDING_PX, tft.getCursorY());
         drawLabeledLine("Album", t.album, TFT_CYAN);
     }

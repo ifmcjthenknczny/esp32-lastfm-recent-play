@@ -42,7 +42,7 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
-        if (displayedTrack.artist.length() > 0 || displayedTrack.song.length() > 0) {
+        if (!displayedTrack.artist.isEmpty() || !displayedTrack.song.isEmpty()) {
             displayShowNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
@@ -78,8 +78,8 @@ DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
         return DisplayState::On;
     }
     const bool hasTrackData =
-    displayedTrack.artist.length() > 0 ||
-    displayedTrack.song.length() > 0;
+    !displayedTrack.artist.isEmpty() ||
+    !displayedTrack.song.isEmpty();
 
     if (!hasTrackData) {
         return DisplayState::Off;
@@ -124,7 +124,7 @@ bool manageDisplayState(bool isPlaying, unsigned long elapsed) {
 }
 
 void logTrack(const Track& t) {
-    Serial.println("Now playing: " + t.song + " by " + t.artist + (t.album.length() > 0 ? (" from album " + t.album) : ""));
+    Serial.println("Now playing: " + t.song + " by " + t.artist + (t.album.isEmpty() ? "" : (" from album " + t.album)));
 }
 
 struct PlaybackContext {
