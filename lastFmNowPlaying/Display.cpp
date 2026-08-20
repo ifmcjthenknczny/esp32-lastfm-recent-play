@@ -4,6 +4,7 @@
 #include "userSettings.h"
 #include "apiConfig.h"
 #include "ConfigDecl.h"
+#include "ConverterDecl.h"
 #include <HTTPClient.h>
 
 extern LGFX tft;

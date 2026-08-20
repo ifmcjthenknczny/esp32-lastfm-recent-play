@@ -9,8 +9,6 @@ extern const char* WIFI_SSID;
 extern const char* WIFI_PASSWORD;
 extern const char* LASTFM_APIKEY;
 extern const char* LASTFM_USERNAME;
-extern const char* JPG_CONVERTER_URL;
-extern const char* JPG_CONVERTER_URL_API_KEY;
-extern const char* JPG_CONVERTER_BUCKET_HOST;
+extern const char* JPG_CONVERTER_API_KEY;
 
 #endif

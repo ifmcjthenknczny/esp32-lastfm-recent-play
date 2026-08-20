@@ -1,6 +1,7 @@
 #include "fetch.h"
 #include "apiConfig.h"
 #include "ConfigDecl.h"
+#include "ConverterDecl.h"
 #include "Track.h"
 #include "userSettings.h"
 #include <WiFi.h>
@@ -121,7 +122,7 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
         return "";
     }
     http.addHeader("Content-Type", "application/json");
-    http.addHeader("x-api-key", JPG_CONVERTER_URL_API_KEY);
+    http.addHeader("x-api-key", JPG_CONVERTER_API_KEY);
     http.addHeader("Connection", "close");
 
     int code = http.POST(body);

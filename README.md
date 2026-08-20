@@ -80,8 +80,10 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
 | File | Role |
 |------|------|
 | `lastFmNowPlaying.ino` | Main sketch: `setup()` and `loop()` only. |
-| `config.example.h` | Template for credentials — copy to `config.h` and edit. |
-| `config.h` | Your WiFi and API keys (create from example; **do not commit**). |
+| `config.example.h` | Template for credentials — copy as `config.h`, remove "static" and edit. |
+| `config.h` | Your WiFi and API keys (create from example). |
+| `converter.example.h` | Template for JPG converter configuration — copy as `converter.h`, remove "static" and edit. |
+| `converter.h` | Your JPG progressive to baseline converter configuration (create from example). |
 | `apiConfig.h` | Last.fm and Cover Art Archive API constants. |
 | `userSettings.h` | Display size, refresh interval, layout, typography. |
 | `LGFX.h` | LovyanGFX panel/bus configuration for your board. |
@@ -89,6 +91,7 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
 | `Display.h` / `Display.cpp` | TFT init, “now playing” screen, text/cover drawing. |
 | `fetch.h` / `Fetch.cpp` | HTTP JSON fetch, album cover URL resolution (Last.fm, CAA, JPG converter). |
 | `LastFmApp.h` / `LastFmApp.cpp` | Fetch + display logic, display on/off timeout, track change detection. |
+| `ConfigDecl.h` / `ConverterDecl.h` | Configuration declaration files. |
 
 ## Configuration
 

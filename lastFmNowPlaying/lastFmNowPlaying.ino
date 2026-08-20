@@ -7,6 +7,7 @@
 #include <U8g2lib.h>
 #include "LGFX.h"
 #include "config.h"
+#include "converter.h"
 #include "apiConfig.h"
 #include "userSettings.h"
 #include "fetch.h"
