@@ -10,7 +10,6 @@
 extern LGFX tft;
 
 static LGFX_Sprite titleBgSprite(&tft);
-
 namespace {
 
 static const unsigned int ELLIPSIS_LENGTH = 3;
@@ -68,11 +67,31 @@ static float albumCoverScale(const String& coverUrl) {
 
 void displayInit() {
     Serial.println("Initializing TFT with LovyanGFX...");
+
+    Serial.print("Chip: ");
+    Serial.println(ESP.getChipModel());
+
+    Serial.print("CPU: ");
+    Serial.print(ESP.getChipCores());
+    Serial.print("x");
+    Serial.print(ESP.getCpuFreqMHz());
+    Serial.println(" MHz");
+
+    Serial.print("RAM: ");
+    Serial.print(ESP.getHeapSize());
+    Serial.println(" bytes");
+
     tft.init();
     tft.setRotation(1);
 
     SCREEN_WIDTH_PX = tft.width();
     SCREEN_HEIGHT_PX = tft.height();
+
+    Serial.print("Display size: ");
+    Serial.print(SCREEN_WIDTH_PX);
+    Serial.print("x");
+    Serial.print(SCREEN_HEIGHT_PX);
+    Serial.println(" px");
 
     ALBUM_COVER_SIZE_PX = SCREEN_HEIGHT_PX;
 
@@ -157,10 +176,10 @@ static void drawPlayIcon(bool isPlaying) {
 static void populateTitleBgSprite(const String& coverUrl) {
     tft.setFont(&myExtendedFont);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
-    const int h = tft.fontHeight();
+    const int fontHeight = tft.fontHeight();
 
     titleBgSprite.deleteSprite();
-    if (!titleBgSprite.createSprite(SCREEN_WIDTH_PX, h)) {
+    if (!titleBgSprite.createSprite(SCREEN_WIDTH_PX, fontHeight)) {
         return;
     }
     titleBgSprite.fillSprite(TFT_BLACK);

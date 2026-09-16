@@ -20,6 +20,7 @@ LGFX tft;
 const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 
 void setup() {
+    Serial.println("START");
     wifi::initSerial();
     displayInit();
     wifi::connect();
