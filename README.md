@@ -43,10 +43,11 @@ Showcase your musical taste in real-time! This project turns the inexpensive 2.2
 
 Make sure you have the following libraries installed in your Arduino IDE (Tools -> Manage Libraries...):
 
-* **`LovyanGFX` by lovyan03:** **Absolutely essential!** For this specific board (ESP32-2432S022c 2.2") and this code, you **must** use `LovyanGFX`. Ignore guides suggesting `TFT_eSPI` for the CYD if you're using this code, as driver configurations differ significantly.
-* **`ArduinoJson` by Benoit Blanchon:** For parsing the JSON response from the Last.fm API.
-* `WiFi`: Built-in with the ESP32 core.
-* `HTTPClient`: Built-in with the ESP32 core (LovyanGFX uses this internally for its `drawJpgUrl`/`drawPngUrl` functions).
+* **`LovyanGFX` by lovyan03 `v1.2.29`:** For this specific board (ESP32-2432S022c 2.2") and this code, you **must** use `LovyanGFX`. Ignore guides suggesting `TFT_eSPI` for the CYD if you're using this code, as driver configurations differ significantly.
+* **`ArduinoJson` by Benoit Blanchon: `v7.4.3`** For parsing the JSON response from the Last.fm API.
+* `HTTPClient` by Adrian McEwen `v2.2.0`: Built-in with the ESP32 core (LovyanGFX uses this internally for its `drawJpgUrl`/`drawPngUrl` functions).
+* `WiFi` by Arduino `v1.2.7`: Built-in with the ESP32 core.
+* `U8g2` by oliver `v2.36.19`: For fonts.
 
 ## Step-by-Step Setup & Installation
 
@@ -60,13 +61,13 @@ Make sure you have the following libraries installed in your Arduino IDE (Tools 
 4.  **Install ESP32 Boards:**
     * Go to: `Tools` > `Board` > `Boards Manager...`.
     * Search for "esp32".
-    * Install "esp32 by Espressif Systems". Use a recent, stable version.
+    * Install "esp32 by Espressif Systems". Use a latest **2.x** version (important because of RAM savings).
 5.  **Select Board and Port:**
     * Go to: `Tools` > `Board` > `ESP32 Arduino` > **`ESP32 Dev Module`**. (This is a good generic choice).
     * Go to: `Tools` > `Port` and select the COM port corresponding to your connected ESP32 (It might mention CH340).
 6.  **Install Libraries:**
     * Go to: `Tools` > `Manage Libraries...`.
-    * Search for and install `LovyanGFX` and `ArduinoJson`.
+    * Search for and install libraries listed above in this README.
 7.  **Configure `LovyanGFX` (If Needed):**
     * This code includes `"LGFX.h"`. This file typically contains the specific pin and driver configuration for your board variant (ESP32-2432S022c).
     * Ensure you have the correct `LGFX.h` file for your board within the project directory or that your LovyanGFX library installation is set up correctly for the `esp32-2432s022c`. Check the LovyanGFX documentation or examples if the display doesn't work out-of-the-box. The correct configuration is *vital*.
@@ -99,11 +100,11 @@ Before uploading, you **must** configure your WiFi and Last.fm details:
 
 1.  **Get a Last.fm API Key:** Create an account and an API key at [https://www.last.fm/api/account/create](https://www.last.fm/api/account/create).
 2.  **Create `config.h`:**
-    * In the `lastFmNowPlaying` folder, copy `config.example.h` to `config.h`.
+    * In the `lastFmNowPlaying` folder, copy `config.example.h` to `config.h`, remove `static` from variable types.
 3.  **Edit `config.h`:**
     * Set `WIFI_SSID` and `WIFI_PASSWORD` to your WiFi credentials.
     * Set `LASTFM_APIKEY` and `LASTFM_USERNAME` to your Last.fm API key and username.
-    * Optionally set the JPG converter and bucket URLs if you use the progressive-JPG converter (see Troubleshooting).
+    * Optionally set the JPG converter and bucket URLs if you use the progressive-JPG converter (**recommended** - see Troubleshooting). Partly configurable in `converter.h` file.
 4.  **Save the files.** You can then upload the sketch.
 
 ## Troubleshooting & Notes
@@ -120,6 +121,22 @@ Before uploading, you **must** configure your WiFi and Last.fm details:
 * **Cover Art Archive (CAA) Usage for JPEGs**: While PNG album covers from the Last.fm API generally display without issues, JPEGs present a challenge. Many JPEGs provided directly by Last.fm are in the *progressive* format. Decoding progressive JPEGs demands significantly more RAM than the *baseline* format, often causing memory exhaustion and display failures on constrained devices like the ESP32. Therefore, when a PNG cover isn't available from Last.fm, this application falls back to using the Cover Art Archive (CAA) API (looking up covers via MusicBrainz MBIDs obtained from Last.fm data). The CAA API is preferred in these cases because it typically provides album covers as more memory-friendly *baseline* JPEGs. The other possibility this app presents is usage of external online API for conversion of *progressive* JPEGs to their *baseline* versions.
 * **CAA Redirects**: A challenge with the CAA API is handling HTTP redirects. The initial API request often redirects to the actual image URL. The code includes logic (`findFinalImageUrl` in `helpers.h`) to follow these redirects and obtain the final image link. Occasional failures might still occur due to server issues, complex redirect chains, or temporary network problems.
 
+## RAM Optimization
+
+The standard ESP32 Dev Module provides approximately 320 KB of usable Heap, meaning memory must be managed carefully—especially when handling networking, JSON parsing, and graphics rendering. Every KB counts.
+
+### Recommended Settings in Arduino IDE:
+
+To ensure optimal memory performance and prevent out-of-memory errors, configure the following options directly in the Arduino IDE (under the **Tools** menu):
+
+* **ESP32 Arduino Core Version:** It is **highly recommended to select Core version 2.x** (e.g., `2.0.17`) instead of version 3.x. The newer 3.x core introduces heavier system buffers and FreeRTOS allocations that consume an extra **30–40 KB of RAM** right on startup, which are crucial to picture rendering.
+* **PSRAM Setting:** Ensure **PSRAM is set to Disabled** (unless your specific board physically has external RAM installed and you intentionally use it).
+* **Core Debug Level:** Set the **Core Debug Level** to `None` to avoid wasting memory on background logging buffers.
+* **Partition Scheme:** Select a standard partition scheme (such as `Default 4MB with spiffs`).
+* **Libraries & Downgrading:** Feel free to experiment with downgrading certain libraries to older versions if you notice higher RAM consumption in newer releases.
+
+> **Why it matters:** Proper configuration inside the Arduino IDE frees up enough critical heap space on this limited memory budget to successfully handle features like album art caching and smooth display rendering without crashing.
+
 ## Resources & Links
 
 * **CYD Setup Guide (Reference):** [witnessmenow/ESP32-Cheap-Yellow-Display SETUP.md](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/SETUP.md) (**IMPORTANT:** Ignore the specific setup instructions for the `TFT_eSPI` library mentioned there; use `LovyanGFX` as described above!)
@@ -129,5 +146,5 @@ Before uploading, you **must** configure your WiFi and Last.fm details:
 * **LovyanGFX Library:** [GitHub Repository](https://github.com/lovyan03/LovyanGFX)
 
 ## Contact
-For questions or feedback, please reach out via GitHub.
+For questions, feedback, ideas, improvements - please reach out via GitHub.
 [ifmcjthenknczny](https://github.com/ifmcjthenknczny)
