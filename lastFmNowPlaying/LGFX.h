@@ -5,6 +5,8 @@
 #include <HTTPClient.h> // this lib needs to be before LovyanGFX, otherwise drawJpgUrl and drawPngUrl is unusable
 #include <LovyanGFX.hpp>
 
+// Waveshare ESP32-S3-Touch-LCD-2.8
+
 // Font defined in main .ino (after U8g2lib.h) so the symbol is available in one place only.
 extern const lgfx::U8g2font myExtendedFont;
 class LGFX : public lgfx::LGFX_Device
@@ -16,7 +18,7 @@ class LGFX : public lgfx::LGFX_Device
 public:
     LGFX(void)
     {
-        { // Konfiguracja magistrali SPI
+        { // SPI
             auto cfg = _bus_instance.config();
             cfg.spi_host = SPI2_HOST;     // Użycie SPI2 (HSPI)
             cfg.spi_mode = 0;             // Tryb SPI 0
@@ -26,21 +28,20 @@ public:
             cfg.use_lock   = true;
             cfg.dma_channel = SPI_DMA_CH_AUTO;
             
-            // Piny SPI dla Waveshare ESP32-S3-Touch-LCD-2.8
-            cfg.pin_sclk = 40;  // SCK / SCLK
-            cfg.pin_mosi = 45;  // MOSI / SDA
-            cfg.pin_miso = -1;  // MISO (nie używane przez sam ekran)
-            cfg.pin_dc   = 41;  // Data/Command (DC)
+            cfg.pin_sclk = 40;
+            cfg.pin_mosi = 45;
+            cfg.pin_miso = -1;
+            cfg.pin_dc   = 41;
             
             _bus_instance.config(cfg);
             _panel_instance.setBus(&_bus_instance);
         }
 
-        { // Konfiguracja panelu LCD
+        { // LCD Panel
             auto cfg = _panel_instance.config();
-            cfg.pin_cs   = 42;  // Chip Select (CS)
-            cfg.pin_rst  = 39;  // Reset (RST)
-            cfg.pin_busy = -1;  // Busy
+            cfg.pin_cs   = 42;
+            cfg.pin_rst  = 39;
+            cfg.pin_busy = -1;
 
             cfg.panel_width  = 240;
             cfg.panel_height = 320;
@@ -48,17 +49,17 @@ public:
             cfg.offset_y     = 0;
             cfg.offset_rotation = 0;
             cfg.readable     = false;
-            cfg.invert       = true;   // Często wymagane dla ST7789 na tej płytce (zmień na false, jeśli kolory będą negatywem)
-            cfg.rgb_order    = false;  // false = RGB
+            cfg.invert       = true;
+            cfg.rgb_order    = false
             cfg.dlen_16bit   = false;
-            cfg.bus_shared   = true;   // Wspólna magistrala (np. z kartą SD)
+            cfg.bus_shared   = true
 
             _panel_instance.config(cfg);
         }
 
-        { // Konfiguracja podświetlenia (Backlight)
+        { // Backlight
             auto cfg = _light_instance.config();
-            cfg.pin_bl = 5;       // Pin podświetlenia (BL)
+            cfg.pin_bl = 5;
             cfg.invert = false;
             cfg.freq   = 12000;
             cfg.pwm_channel = 7;

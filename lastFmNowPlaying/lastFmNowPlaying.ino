@@ -14,28 +14,29 @@
 #include "display.h"
 #include "WiFiManager.h"
 #include "LastFmApp.h"
+#include "systemInit.h"
 
 LGFX tft;
 // Font must be defined here so U8g2lib.h (included above) is in scope for u8g2_font_unifont_t_extended.
 const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 
 void setup() {
-    wifi::initSerial();
+    systemInit::initSerial();
     Serial.println("START");
-    displayInit();
+    display::init();
     wifi::connect();
-    wifi::syncTime();
+    systemInit::syncTime();
     delay(1000);
 
     Serial.println("Fetching Now Playing data...");
-    displayShowFetching();
+    display::showFetching();
     lastFmFetchAndDisplay();
 }
 
 void loop() {
     if (!wifi::isConnected()) {
         Serial.println("WiFi disconnected. Reconnecting...");
-        displayShowWifiReconnecting();
+        display::showWifiReconnecting();
         if (wifi::tryReconnect()) {
             Serial.println("Reconnected.");
         }

@@ -1,24 +1,28 @@
 #include "display.h"
-#include "Track.h"
-#include "LGFX.h"
-#include "userSettings.h"
-#include "apiConfig.h"
+
+#include <HTTPClient.h>
+
 #include "ConfigDecl.h"
 #include "ConverterDecl.h"
-#include <HTTPClient.h>
+#include "LGFX.h"
+#include "Track.h"
+#include "apiConfig.h"
+#include "userSettings.h"
 
 extern LGFX tft;
 
 static LGFX_Sprite titleBgSprite(&tft);
-namespace {
+namespace display {
 
 static const unsigned int ELLIPSIS_LENGTH = 3;
-static const unsigned int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
+static const unsigned int MAX_STRING_LENGTH =
+    MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
 
-const int LABEL_LINE_PX  = 8;
-const int VALUE_LINE_PX  = 20;
-const int SPACE_LINE_PX  = 8;
-const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX + SPACE_LINE_PX + LABEL_LINE_PX;
+const int LABEL_LINE_PX = 8;
+const int VALUE_LINE_PX = 20;
+const int SPACE_LINE_PX = 8;
+const int TRACK_VALUE_Y = TEXT_START_HEIGHT_PX + LABEL_LINE_PX + VALUE_LINE_PX +
+                          SPACE_LINE_PX + LABEL_LINE_PX;
 
 unsigned int SCREEN_WIDTH_PX = 0;
 unsigned int SCREEN_HEIGHT_PX = 0;
@@ -32,15 +36,13 @@ struct ReplaceRule {
 };
 
 static const ReplaceRule REPLACE_RULES[] = {
-    {"\u2019", "'"},   // right single quote -> apostrophe
-    {"\u201C", "\""},  // left double quote
-    {"\u201D", "\""},  // right double quote
-    {"\u2026", "..."}, // ellipsis
-    {"\u2013", "-"},   // en dash
-    {"\u2014", "-"},   // em dash
+    {"\u2019", "'"},    // right single quote -> apostrophe
+    {"\u201C", "\""},   // left double quote
+    {"\u201D", "\""},   // right double quote
+    {"\u2026", "..."},  // ellipsis
+    {"\u2013", "-"},    // en dash
+    {"\u2014", "-"},    // em dash
 };
-
-}  // namespace
 
 static String adjustTrackText(const String& text) {
     String out = text;
@@ -56,7 +58,8 @@ static String adjustTrackText(const String& text) {
 }
 
 static float albumCoverScale(const String& coverUrl) {
-    if (coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST) || coverUrl.endsWith(".png")) {
+    if (coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST) ||
+        coverUrl.endsWith(".png")) {
         return (float)ALBUM_COVER_SIZE_PX / 300.0f;
     }
     if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg")) {
@@ -65,7 +68,7 @@ static float albumCoverScale(const String& coverUrl) {
     return (float)ALBUM_COVER_SIZE_PX / 300.0f;
 }
 
-void displayInit() {
+void init() {
     Serial.println("Initializing TFT with LovyanGFX...");
 
     Serial.print("Chip: ");
@@ -95,8 +98,10 @@ void displayInit() {
 
     ALBUM_COVER_SIZE_PX = SCREEN_HEIGHT_PX;
 
-    ALBUM_PADDING_X_PX = IS_ALBUM_CENTERED ? (SCREEN_WIDTH_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
-    ALBUM_PADDING_Y_PX = IS_ALBUM_CENTERED ? (SCREEN_HEIGHT_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
+    ALBUM_PADDING_X_PX =
+        IS_ALBUM_CENTERED ? (SCREEN_WIDTH_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
+    ALBUM_PADDING_Y_PX =
+        IS_ALBUM_CENTERED ? (SCREEN_HEIGHT_PX - ALBUM_COVER_SIZE_PX) / 2 : 0;
 
     tft.clear(TFT_BLACK);
     tft.setFont(&myExtendedFont);
@@ -130,14 +135,18 @@ void displayInit() {
 
 static void drawAlbumCover(const String& coverUrl) {
     const float scale = albumCoverScale(coverUrl);
-    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
-        tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") ||
+        coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
+        tft.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX,
+                       0, 0, 0, 0, scale, scale);
     } else if (coverUrl.endsWith(".png")) {
-        tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX, 0, 0, 0, 0, scale, scale);
+        tft.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, ALBUM_PADDING_Y_PX,
+                       0, 0, 0, 0, scale, scale);
     }
 }
 
-static void drawLabeledLine(const char* label, const String& info, uint16_t labelColor) {
+static void drawLabeledLine(const char* label, const String& info,
+                            uint16_t labelColor) {
     String trimmed = adjustTrackText(info);
     tft.setFont(&fonts::Font0);
     tft.setTextColor(labelColor, TFT_BLACK);
@@ -186,14 +195,18 @@ static void populateTitleBgSprite(const String& coverUrl) {
 
     const float scale = albumCoverScale(coverUrl);
     const int spriteY = ALBUM_PADDING_Y_PX - TRACK_VALUE_Y;
-    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") || coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
-        titleBgSprite.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY, 0, 0, 0, 0, scale, scale);
+    if (coverUrl.endsWith(".jpg") || coverUrl.endsWith(".jpeg") ||
+        coverUrl.startsWith(JPG_CONVERTER_BUCKET_HOST)) {
+        titleBgSprite.drawJpgUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY,
+                                 0, 0, 0, 0, scale, scale);
     } else if (coverUrl.endsWith(".png")) {
-        titleBgSprite.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY, 0, 0, 0, 0, scale, scale);
+        titleBgSprite.drawPngUrl(coverUrl.c_str(), ALBUM_PADDING_X_PX, spriteY,
+                                 0, 0, 0, 0, scale, scale);
     }
 }
 
-void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying) {
+void updateAll(const JsonObject& track, const char* albumCoverUrl,
+               bool isPlaying) {
     const Track t = trackFromJson(track);
     tft.startWrite();
     tft.fillScreen(TFT_BLACK);
@@ -204,7 +217,7 @@ void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool i
     populateTitleBgSprite(String(albumCoverUrl));
 }
 
-void displayUpdateTrackNameOnly(const JsonObject& track) {
+void updateTrackNameOnly(const JsonObject& track) {
     const Track t = trackFromJson(track);
     tft.setFont(&myExtendedFont);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
@@ -214,7 +227,8 @@ void displayUpdateTrackNameOnly(const JsonObject& track) {
         tft.setTextColor(TFT_WHITE, TFT_BLACK);
     } else {
         tft.fillRect(TEXT_LEFT_PADDING_PX, TRACK_VALUE_Y,
-                     SCREEN_WIDTH_PX - TEXT_LEFT_PADDING_PX, tft.fontHeight(), TFT_BLACK);
+                     SCREEN_WIDTH_PX - TEXT_LEFT_PADDING_PX, tft.fontHeight(),
+                     TFT_BLACK);
         tft.setTextColor(TFT_WHITE, TFT_BLACK);
     }
 
@@ -222,11 +236,11 @@ void displayUpdateTrackNameOnly(const JsonObject& track) {
     tft.print(adjustTrackText(t.song));
 }
 
-void displayUpdatePlayIcon(bool isPlaying) {
+void updatePlayIcon(bool isPlaying) {
     drawPlayIcon(isPlaying);
 }
 
-void displayShowNoTracks() {
+void showNoTracks() {
     tft.fillScreen(TFT_BLUE);
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1.25f);
@@ -234,7 +248,7 @@ void displayShowNoTracks() {
     tft.println("No recent tracks found.");
 }
 
-void displayShowWifiReconnecting() {
+void showWifiReconnecting() {
     tft.fillScreen(TFT_RED);
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1.0f);
@@ -242,8 +256,10 @@ void displayShowWifiReconnecting() {
     tft.println("WiFi Lost! Reconnecting...");
 }
 
-void displayShowFetching() {
+void showFetching() {
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.println("Fetching Last.fm data...");
 }
+
+}  // namespace display

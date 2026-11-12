@@ -13,9 +13,9 @@ const float DISPLAY_BRIGHTNESS_DIM = 25.f;
 const float DISPLAY_BRIGHTNESS_OFF = 0.f;
 
 // --- Layout ---
-const int  TEXT_START_HEIGHT_PX = 136;
-const int  PLAYICON_PADDING_PX = 5;
-const int  TEXT_LEFT_PADDING_PX = 10;
+const int TEXT_START_HEIGHT_PX = 136;
+const int PLAYICON_PADDING_PX = 5;
+const int TEXT_LEFT_PADDING_PX = 10;
 const bool IS_ALBUM_CENTERED = true;
 
 // --- Typography ---
@@ -25,6 +25,6 @@ const float TRACK_INFO_SPACE_SIZE = 0.5f;
 const unsigned int MAX_CHARS_IN_LINE = 31;
 
 // --- JPEG converter ---
-const unsigned int  USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB = 1000;
+const unsigned int USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB = 1000;
 
 #endif

@@ -1,13 +1,17 @@
 #include "fetch.h"
-#include "apiConfig.h"
+
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+
 #include "ConfigDecl.h"
 #include "ConverterDecl.h"
 #include "Track.h"
+#include "apiConfig.h"
 #include "userSettings.h"
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-#include <WiFiClientSecure.h>
+
+namespace fetch {
 
 static const int MAX_REDIRECTS = 8;
 
@@ -15,7 +19,7 @@ static bool isRedirect(int code) {
     return (code == 301 || code == 302 || code == 307 || code == 308);
 }
 
-void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
+void json(const char* initialUrl, DynamicJsonDocument& outDoc) {
     outDoc.clear();
     yield();
     if (WiFi.status() != WL_CONNECTED) {
@@ -41,26 +45,29 @@ void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
             if (stream) deserializeJson(outDoc, *stream);
             http.end();
             return;
-        }
-        else if (isRedirect(code)) {
+        } else if (isRedirect(code)) {
             String next = http.getLocation();
             http.end();
             if (next.isEmpty() || next == url) return;
             url = next;
             continue;
-        }
-        else {
+        } else {
             String payload = http.getString();
             DynamicJsonDocument errDoc(512);
-            if (!deserializeJson(errDoc, payload) && errDoc.containsKey("message")) {
+            if (!deserializeJson(errDoc, payload) &&
+                errDoc.containsKey("message")) {
                 String msg = errDoc["message"].as<String>();
                 if (errDoc.containsKey("error")) {
-                    Serial.println("fetchJson: error " + String(code) + " - " + msg + " (error: " + String(errDoc["error"].as<int>()) + ")");
+                    Serial.println(
+                        "Json fetch error: " + String(code) + " - " + msg +
+                        " (error: " + String(errDoc["error"].as<int>()) + ")");
                 } else {
-                    Serial.println("fetchJson: error " + String(code) + " - " + msg);
+                    Serial.println("Json fetch error: " + String(code) + " - " +
+                                   msg);
                 }
             } else {
-                Serial.println("fetchJson: error " + String(code) + " " + http.errorToString(code));
+                Serial.println("Json fetch error: " + String(code) + " " +
+                               http.errorToString(code));
             }
             http.end();
         }
@@ -97,7 +104,8 @@ static String findFinalImageUrl(const char* initialUrl) {
     return "";
 }
 
-static String getConvertedImageUrl(const String& imageUrl, const String& mbid, const Track& t) {
+static String getConvertedImageUrl(const String& imageUrl, const String& mbid,
+                                   const Track& t) {
     if (WiFi.status() != WL_CONNECTED) {
         return "";
     }
@@ -111,7 +119,7 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
         doc["artist"] = t.artist;
     }
     if (!t.album.isEmpty()) {
-        doc["album"]  = t.album;
+        doc["album"] = t.album;
     }
 
     String body;
@@ -126,7 +134,9 @@ static String getConvertedImageUrl(const String& imageUrl, const String& mbid, c
     http.addHeader("Connection", "close");
 
     int code = http.POST(body);
-    String out = (code == HTTP_CODE_OK || code == HTTP_CODE_CREATED) ? http.getString() : "";
+    String out = (code == HTTP_CODE_OK || code == HTTP_CODE_CREATED)
+                     ? http.getString()
+                     : "";
     http.end();
     return out;
 }
@@ -136,15 +146,17 @@ static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);
 static String getMusicbrainzImageUrl(const String& mbid) {
     if (mbid.isEmpty()) return "";
     String url = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
-    fetchJson(url.c_str(), docCaa);
+    json(url.c_str(), docCaa);
     if (docCaa.isNull()) return "";
 
     JsonObject root = docCaa.as<JsonObject>();
-    if (!root.containsKey("images") || !root["images"].is<JsonArray>() || root["images"].size() == 0) {
+    if (!root.containsKey("images") || !root["images"].is<JsonArray>() ||
+        root["images"].size() == 0) {
         return "";
     }
     JsonObject firstImage = root["images"][0];
-    if (!firstImage.containsKey("thumbnails") || !firstImage["thumbnails"].is<JsonObject>()) {
+    if (!firstImage.containsKey("thumbnails") ||
+        !firstImage["thumbnails"].is<JsonObject>()) {
         return "";
     }
     JsonObject thumbs = firstImage["thumbnails"];
@@ -160,13 +172,15 @@ static String getSuitableAlbumCoverUrlFromLastFmApi(JsonArray images) {
     return images[idx]["#text"].as<String>();
 }
 
-static String extractNestedTrackInfo(JsonObject track, const char* key1, const char* key2) {
-    if (!track.containsKey(key1) || !track[key1].is<JsonObject>() || !track[key1].as<JsonObject>().containsKey(key2))
+static String extractNestedTrackInfo(JsonObject track, const char* key1,
+                                     const char* key2) {
+    if (!track.containsKey(key1) || !track[key1].is<JsonObject>() ||
+        !track[key1].as<JsonObject>().containsKey(key2))
         return "";
     return track[key1][key2].as<String>();
 }
 
-String getAlbumCoverUrl(JsonObject track) {
+String albumCoverUrl(JsonObject track) {
     JsonArray images = track["image"];
     String url = getSuitableAlbumCoverUrlFromLastFmApi(images);
 
@@ -179,8 +193,11 @@ String getAlbumCoverUrl(JsonObject track) {
 
     String mbid = extractNestedTrackInfo(track, "album", "mbid");
 
-    const bool isLowMemory = ESP.getFreeHeap() < (USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB * 1024);
-    const bool shouldUseJpegConverter = hasImages && !isPng && isLowMemory && strlen(JPG_CONVERTER_URL) > 0;
+    const bool isLowMemory =
+        ESP.getFreeHeap() <
+        (USE_JPEG_CONVERTER_FREE_MEMORY_THRESHOLD_KB * 1024);
+    const bool shouldUseJpegConverter =
+        hasImages && !isPng && isLowMemory && strlen(JPG_CONVERTER_URL) > 0;
 
     if (shouldUseJpegConverter) {
         const Track t = trackFromJson(track);
@@ -201,3 +218,5 @@ String getAlbumCoverUrl(JsonObject track) {
 
     return url;
 }
+
+}  // namespace fetch

@@ -3,23 +3,28 @@
 
 #include <ArduinoJson.h>
 
+namespace display {
+
 /** Initialize TFT (LovyanGFX), rotation, font, and show boot info. */
-void displayInit();
+void init();
 
 /** Clear screen, draw album cover, draw all text, and play icon. */
-void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying);
+void updateAll(const JsonObject& track, const char* albumCoverUrl,
+               bool isPlaying);
 
-void displayUpdateTrackNameOnly(const JsonObject& track);
+void updateTrackNameOnly(const JsonObject& track);
 
-void displayUpdatePlayIcon(bool isPlaying);
+void updatePlayIcon(bool isPlaying);
 
 /** Show "No recent tracks" message. */
-void displayShowNoTracks();
+void showNoTracks();
 
 /** Show "WiFi reconnecting" message. */
-void displayShowWifiReconnecting();
+void showWifiReconnecting();
 
 /** Show "Fetching Last.fm data..." and clear screen. */
-void displayShowFetching();
+void showFetching();
+
+}  // namespace display
 
 #endif
