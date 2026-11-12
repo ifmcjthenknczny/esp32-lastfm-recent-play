@@ -1,10 +1,10 @@
+#include <U8g2lib.h>
 #include <time.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <U8g2lib.h>
 #include "LGFX.h"
 #include "config.h"
 #include "converter.h"
@@ -20,8 +20,8 @@ LGFX tft;
 const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 
 void setup() {
-    Serial.println("START");
     wifi::initSerial();
+    Serial.println("START");
     displayInit();
     wifi::connect();
     wifi::syncTime();

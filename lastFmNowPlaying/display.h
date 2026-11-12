@@ -19,7 +19,7 @@ void displayShowNoTracks();
 /** Show "WiFi reconnecting" message. */
 void displayShowWifiReconnecting();
 
-/** Show "Getting Last.fm data..." and clear screen. */
+/** Show "Fetching Last.fm data..." and clear screen. */
 void displayShowFetching();
 
 #endif
