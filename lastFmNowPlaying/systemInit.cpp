@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <time.h>
+
 #include "LGFX.h"
 
 extern LGFX tft;
@@ -20,11 +21,8 @@ void initSerial() {
 void syncTime() {
     Serial.println("Configuring time using NTP...");
 
-    const char* ntpServers[] = {
-        "tempus1.gum.gov.pl",
-        "pool.ntp.org",
-        "162.159.200.1"
-    };
+    const char* ntpServers[] = {"tempus1.gum.gov.pl", "pool.ntp.org",
+                                "162.159.200.1"};
 
     time_t now = time(nullptr);
     int attempts = 0;
@@ -34,8 +32,9 @@ void syncTime() {
         attempts++;
         const char* currentServer = ntpServers[(attempts - 1) % 3];
 
-        Serial.printf("[Attempt %d/%d] Querying NTP server: %s\n", attempts, maxAttempts, currentServer);
-        
+        Serial.printf("[Attempt %d/%d] Querying NTP server: %s\n", attempts,
+                      maxAttempts, currentServer);
+
         configTzTime(TZ_STRING, currentServer);
 
         int timeout = 0;
@@ -68,4 +67,4 @@ void syncTime() {
     }
 }
 
-} // namespace systemInit
+}  // namespace systemInit

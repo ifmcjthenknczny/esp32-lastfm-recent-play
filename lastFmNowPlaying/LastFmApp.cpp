@@ -1,11 +1,13 @@
 #include "LastFmApp.h"
-#include "apiConfig.h"
-#include "fetch.h"
-#include "display.h"
-#include "Track.h"
-#include "userSettings.h"
+
 #include <ArduinoJson.h>
+
 #include "LGFX.h"
+#include "Track.h"
+#include "apiConfig.h"
+#include "display.h"
+#include "fetch.h"
+#include "userSettings.h"
 
 extern LGFX tft;
 
@@ -42,7 +44,8 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
 
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
-        if (!displayedTrack.artist.isEmpty() || !displayedTrack.song.isEmpty()) {
+        if (!displayedTrack.artist.isEmpty() ||
+            !displayedTrack.song.isEmpty()) {
             display::showNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
@@ -64,12 +67,13 @@ void updateLastPlayingTime() {
 
 int toDisplayBrightness(float brightnessPercent) {
     const int MAX_BRIGHTNESS = 255;
-    int result = static_cast<int>(brightnessPercent * (MAX_BRIGHTNESS / 100.0f));
+    int result =
+        static_cast<int>(brightnessPercent * (MAX_BRIGHTNESS / 100.0f));
 
     if (result < 0) {
         return 0;
     }
-    
+
     return result > MAX_BRIGHTNESS ? MAX_BRIGHTNESS : result;
 }
 
@@ -78,16 +82,14 @@ DisplayState computeDisplayState(bool isPlaying, unsigned long elapsed) {
         return DisplayState::On;
     }
     const bool hasTrackData =
-    !displayedTrack.artist.isEmpty() ||
-    !displayedTrack.song.isEmpty();
+        !displayedTrack.artist.isEmpty() || !displayedTrack.song.isEmpty();
 
     if (!hasTrackData) {
         return DisplayState::Off;
     }
     if (elapsed >= DISPLAY_OFF_MS) {
         return DisplayState::Off;
-    }
-    else if (elapsed >= DISPLAY_DIM_MS) {
+    } else if (elapsed >= DISPLAY_DIM_MS) {
         return DisplayState::Dimmed;
     }
     return displayState;
@@ -110,12 +112,10 @@ bool manageDisplayState(bool isPlaying, unsigned long elapsed) {
     if (newState == DisplayState::On) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_ON));
         Serial.println("DISPLAY ON");
-    }
-    else if (newState == DisplayState::Dimmed) {
+    } else if (newState == DisplayState::Dimmed) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_DIM));
         Serial.println("DISPLAY DIMMED");
-    }
-    else if (newState == DisplayState::Off) {
+    } else if (newState == DisplayState::Off) {
         tft.setBrightness(toDisplayBrightness(DISPLAY_BRIGHTNESS_OFF));
         Serial.println("DISPLAY OFF");
     }
@@ -124,7 +124,8 @@ bool manageDisplayState(bool isPlaying, unsigned long elapsed) {
 }
 
 void logTrack(const Track& t) {
-    Serial.println("Now playing: " + t.song + " by " + t.artist + (t.album.isEmpty() ? "" : (" from album " + t.album)));
+    Serial.println("Now playing: " + t.song + " by " + t.artist +
+                   (t.album.isEmpty() ? "" : (" from album " + t.album)));
 }
 
 struct PlaybackContext {
@@ -133,19 +134,23 @@ struct PlaybackContext {
     bool hasWokenUp;
 };
 
-void updateDisplay(const JsonObject& track, DisplayState displayState, PlaybackContext playback) {
+void updateDisplay(const JsonObject& track, DisplayState displayState,
+                   PlaybackContext playback) {
     if (displayState != DisplayState::On) {
         return;
     }
 
     const Track t = trackFromJson(track);
     const bool artistChanged = (t.artist != displayedTrack.artist);
-    const bool trackChanged  = (t.song != displayedTrack.song);
-    const bool albumChanged  = (t.album != displayedTrack.album);
+    const bool trackChanged = (t.song != displayedTrack.song);
+    const bool albumChanged = (t.album != displayedTrack.album);
 
-    const bool shouldRedrawWholeDisplay = ((artistChanged || albumChanged) && playback.isPlaying) || playback.hasWokenUp;
+    const bool shouldRedrawWholeDisplay =
+        ((artistChanged || albumChanged) && playback.isPlaying) ||
+        playback.hasWokenUp;
     const bool shouldRedrawTrackOnly = trackChanged && playback.isPlaying;
-    const bool shouldRedrawPlayIcon = playback.isPlaying || playback.elapsed >= PLAYING_ICON_UPDATE_DELAY_MS;
+    const bool shouldRedrawPlayIcon =
+        playback.isPlaying || playback.elapsed >= PLAYING_ICON_UPDATE_DELAY_MS;
 
     if (shouldRedrawWholeDisplay) {
         String coverUrl = fetch::albumCoverUrl(track);
@@ -153,12 +158,12 @@ void updateDisplay(const JsonObject& track, DisplayState displayState, PlaybackC
         display::updateAll(track, coverUrl.c_str(), playback.isPlaying);
     } else if (shouldRedrawTrackOnly) {
         display::updateTrackNameOnly(track);
-    } 
+    }
 
     if (artistChanged || trackChanged || albumChanged) {
         logTrack(t);
     }
-    
+
     if (shouldRedrawPlayIcon) {
         display::updatePlayIcon(playback.isPlaying);
     }
@@ -181,8 +186,7 @@ void lastFmFetchAndDisplay() {
         updateLastPlayingTime();
     }
     const unsigned long now = millis();
-    const unsigned long elapsed =
-        elapsedSinceLastPlayingTime(now);
+    const unsigned long elapsed = elapsedSinceLastPlayingTime(now);
     const bool hasWokenUp = manageDisplayState(isPlaying, elapsed);
     updateDisplay(track, displayState, {isPlaying, elapsed, hasWokenUp});
 }

@@ -5,12 +5,14 @@
 
 namespace fetch {
 
-/** Fetch URL and parse response as JSON into outDoc. Clears/fills outDoc; no extra allocation. */
+/** Fetch URL and parse response as JSON into outDoc. Clears/fills outDoc; no
+ * extra allocation. */
 void json(const char* url, DynamicJsonDocument& outDoc);
 
-/** Resolve album cover image URL from Last.fm track object (may use CAA or JPG converter). */
+/** Resolve album cover image URL from Last.fm track object (may use CAA or JPG
+ * converter). */
 String albumCoverUrl(JsonObject track);
 
-} // namespace fetch
+}  // namespace fetch
 
 #endif

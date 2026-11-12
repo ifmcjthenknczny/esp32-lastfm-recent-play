@@ -1,0 +1,11 @@
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 80
+SortIncludes: CaseSensitive
+LineEnding: LF
+PointerAlignment: Left
+ReferenceAlignment: Left
+BreakBeforeBraces: Attach
+MaxEmptyLinesToKeep: 1
+AllowShortFunctionsOnASingleLine: Empty
+SpaceBeforeParens: ControlStatements

@@ -1,0 +1,16 @@
+# C/C++
+*.cpp text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.cc text eol=lf
+
+# Arduino
+*.ino text eol=lf
+
+# Config
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf

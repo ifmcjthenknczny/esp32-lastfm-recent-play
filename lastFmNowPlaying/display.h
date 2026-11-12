@@ -9,7 +9,8 @@ namespace display {
 void init();
 
 /** Clear screen, draw album cover, draw all text, and play icon. */
-void updateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying);
+void updateAll(const JsonObject& track, const char* albumCoverUrl,
+               bool isPlaying);
 
 void updateTrackNameOnly(const JsonObject& track);
 
@@ -24,6 +25,6 @@ void showWifiReconnecting();
 /** Show "Fetching Last.fm data..." and clear screen. */
 void showFetching();
 
-} // namespace display
+}  // namespace display
 
 #endif

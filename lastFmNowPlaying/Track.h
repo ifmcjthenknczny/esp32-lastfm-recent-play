@@ -11,8 +11,7 @@ struct Track {
 };
 
 inline Track trackFromJson(const JsonObject& track) {
-    return {track["artist"]["#text"] | "Unknown",
-            track["name"] | "Unknown",
+    return {track["artist"]["#text"] | "Unknown", track["name"] | "Unknown",
             track["album"]["#text"] | "Unknown"};
 }
 

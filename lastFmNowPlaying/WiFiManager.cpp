@@ -1,6 +1,8 @@
 #include "WiFiManager.h"
-#include <WiFi.h>
+
 #include <HTTPClient.h>
+#include <WiFi.h>
+
 #include "LGFX.h"
 
 extern LGFX tft;
@@ -49,7 +51,9 @@ void connect() {
             tft.setTextSize(1.25f);
             tft.setCursor(0, 0);
             tft.println("WiFi Failed!");
-            while (1) { delay(100); }
+            while (1) {
+                delay(100);
+            }
         }
     }
 
