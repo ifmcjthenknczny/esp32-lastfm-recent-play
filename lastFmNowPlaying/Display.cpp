@@ -245,5 +245,5 @@ void displayShowWifiReconnecting() {
 void displayShowFetching() {
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
-    tft.println("Getting Last.fm data...");
+    tft.println("Fetching Last.fm data...");
 }

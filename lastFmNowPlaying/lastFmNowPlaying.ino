@@ -1,10 +1,10 @@
+#include <U8g2lib.h>
 #include <time.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <U8g2lib.h>
 #include "LGFX.h"
 #include "config.h"
 #include "converter.h"
@@ -14,17 +14,18 @@
 #include "display.h"
 #include "WiFiManager.h"
 #include "LastFmApp.h"
+#include "systemInit.h"
 
 LGFX tft;
 // Font must be defined here so U8g2lib.h (included above) is in scope for u8g2_font_unifont_t_extended.
 const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 
 void setup() {
+    systemInit::initSerial();
     Serial.println("START");
-    wifi::initSerial();
     displayInit();
     wifi::connect();
-    wifi::syncTime();
+    systemInit::syncTime();
     delay(1000);
 
     Serial.println("Fetching Now Playing data...");
