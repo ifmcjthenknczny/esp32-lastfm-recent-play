@@ -9,13 +9,15 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 
+namespace fetch {
+
 static const int MAX_REDIRECTS = 8;
 
 static bool isRedirect(int code) {
     return (code == 301 || code == 302 || code == 307 || code == 308);
 }
 
-void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
+void json(const char* initialUrl, DynamicJsonDocument& outDoc) {
     outDoc.clear();
     yield();
     if (WiFi.status() != WL_CONNECTED) {
@@ -55,12 +57,12 @@ void fetchJson(const char* initialUrl, DynamicJsonDocument& outDoc) {
             if (!deserializeJson(errDoc, payload) && errDoc.containsKey("message")) {
                 String msg = errDoc["message"].as<String>();
                 if (errDoc.containsKey("error")) {
-                    Serial.println("fetchJson: error " + String(code) + " - " + msg + " (error: " + String(errDoc["error"].as<int>()) + ")");
+                    Serial.println("Json fetch error: " + String(code) + " - " + msg + " (error: " + String(errDoc["error"].as<int>()) + ")");
                 } else {
-                    Serial.println("fetchJson: error " + String(code) + " - " + msg);
+                    Serial.println("Json fetch error: " + String(code) + " - " + msg);
                 }
             } else {
-                Serial.println("fetchJson: error " + String(code) + " " + http.errorToString(code));
+                Serial.println("Json fetch error: " + String(code) + " " + http.errorToString(code));
             }
             http.end();
         }
@@ -136,7 +138,7 @@ static DynamicJsonDocument docCaa(JSON_BUFFER_SIZE);
 static String getMusicbrainzImageUrl(const String& mbid) {
     if (mbid.isEmpty()) return "";
     String url = String("http://") + COVERALBUM_HOST + coverAlbumPath(mbid);
-    fetchJson(url.c_str(), docCaa);
+    json(url.c_str(), docCaa);
     if (docCaa.isNull()) return "";
 
     JsonObject root = docCaa.as<JsonObject>();
@@ -166,7 +168,7 @@ static String extractNestedTrackInfo(JsonObject track, const char* key1, const c
     return track[key1][key2].as<String>();
 }
 
-String getAlbumCoverUrl(JsonObject track) {
+String albumCoverUrl(JsonObject track) {
     JsonArray images = track["image"];
     String url = getSuitableAlbumCoverUrlFromLastFmApi(images);
 
@@ -201,3 +203,5 @@ String getAlbumCoverUrl(JsonObject track) {
 
     return url;
 }
+
+} // namespace fetch

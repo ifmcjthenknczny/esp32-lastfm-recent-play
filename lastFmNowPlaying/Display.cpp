@@ -10,7 +10,7 @@
 extern LGFX tft;
 
 static LGFX_Sprite titleBgSprite(&tft);
-namespace {
+namespace display {
 
 static const unsigned int ELLIPSIS_LENGTH = 3;
 static const unsigned int MAX_STRING_LENGTH = MAX_CHARS_IN_LINE - ELLIPSIS_LENGTH;
@@ -40,8 +40,6 @@ static const ReplaceRule REPLACE_RULES[] = {
     {"\u2014", "-"},   // em dash
 };
 
-}  // namespace
-
 static String adjustTrackText(const String& text) {
     String out = text;
     for (const auto& rule : REPLACE_RULES) {
@@ -65,7 +63,7 @@ static float albumCoverScale(const String& coverUrl) {
     return (float)ALBUM_COVER_SIZE_PX / 300.0f;
 }
 
-void displayInit() {
+void init() {
     Serial.println("Initializing TFT with LovyanGFX...");
 
     Serial.print("Chip: ");
@@ -193,7 +191,7 @@ static void populateTitleBgSprite(const String& coverUrl) {
     }
 }
 
-void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying) {
+void updateAll(const JsonObject& track, const char* albumCoverUrl, bool isPlaying) {
     const Track t = trackFromJson(track);
     tft.startWrite();
     tft.fillScreen(TFT_BLACK);
@@ -204,7 +202,7 @@ void displayUpdateAll(const JsonObject& track, const char* albumCoverUrl, bool i
     populateTitleBgSprite(String(albumCoverUrl));
 }
 
-void displayUpdateTrackNameOnly(const JsonObject& track) {
+void updateTrackNameOnly(const JsonObject& track) {
     const Track t = trackFromJson(track);
     tft.setFont(&myExtendedFont);
     tft.setTextSize(TRACK_INFO_TEXT_SIZE);
@@ -222,11 +220,11 @@ void displayUpdateTrackNameOnly(const JsonObject& track) {
     tft.print(adjustTrackText(t.song));
 }
 
-void displayUpdatePlayIcon(bool isPlaying) {
+void updatePlayIcon(bool isPlaying) {
     drawPlayIcon(isPlaying);
 }
 
-void displayShowNoTracks() {
+void showNoTracks() {
     tft.fillScreen(TFT_BLUE);
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1.25f);
@@ -234,7 +232,7 @@ void displayShowNoTracks() {
     tft.println("No recent tracks found.");
 }
 
-void displayShowWifiReconnecting() {
+void showWifiReconnecting() {
     tft.fillScreen(TFT_RED);
     tft.setTextColor(TFT_WHITE);
     tft.setTextSize(1.0f);
@@ -242,8 +240,10 @@ void displayShowWifiReconnecting() {
     tft.println("WiFi Lost! Reconnecting...");
 }
 
-void displayShowFetching() {
+void showFetching() {
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 0);
     tft.println("Fetching Last.fm data...");
 }
+
+}  // namespace

@@ -27,7 +27,7 @@ unsigned long elapsedSinceLastPlayingTime(unsigned long currentTime = 0) {
 
 bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     String url = String("http://") + LASTFM_HOST + getLastFmRecentTracksPath();
-    fetchJson(url.c_str(), doc);
+    fetch::json(url.c_str(), doc);
 
     if (doc.isNull()) {
         Serial.println("fetchRecentTrack: doc is null");
@@ -43,7 +43,7 @@ bool fetchRecentTrack(DynamicJsonDocument& doc, JsonObject& outTrack) {
     JsonArray trackArray = recenttracks["track"];
     if (trackArray.isNull() || trackArray.size() == 0) {
         if (!displayedTrack.artist.isEmpty() || !displayedTrack.song.isEmpty()) {
-            displayShowNoTracks();
+            display::showNoTracks();
         }
         Serial.println("fetchRecentTrack: no tracks");
         return false;
@@ -148,11 +148,11 @@ void updateDisplay(const JsonObject& track, DisplayState displayState, PlaybackC
     const bool shouldRedrawPlayIcon = playback.isPlaying || playback.elapsed >= PLAYING_ICON_UPDATE_DELAY_MS;
 
     if (shouldRedrawWholeDisplay) {
-        String coverUrl = getAlbumCoverUrl(track);
+        String coverUrl = fetch::albumCoverUrl(track);
         Serial.println("coverUrl: " + coverUrl);
-        displayUpdateAll(track, coverUrl.c_str(), playback.isPlaying);
+        display::updateAll(track, coverUrl.c_str(), playback.isPlaying);
     } else if (shouldRedrawTrackOnly) {
-        displayUpdateTrackNameOnly(track);
+        display::updateTrackNameOnly(track);
     } 
 
     if (artistChanged || trackChanged || albumChanged) {
@@ -160,7 +160,7 @@ void updateDisplay(const JsonObject& track, DisplayState displayState, PlaybackC
     }
     
     if (shouldRedrawPlayIcon) {
-        displayUpdatePlayIcon(playback.isPlaying);
+        display::updatePlayIcon(playback.isPlaying);
     }
 
     displayedTrack = t;

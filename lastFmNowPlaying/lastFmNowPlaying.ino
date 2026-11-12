@@ -23,20 +23,20 @@ const lgfx::U8g2font myExtendedFont(u8g2_font_unifont_t_extended);
 void setup() {
     systemInit::initSerial();
     Serial.println("START");
-    displayInit();
+    display::init();
     wifi::connect();
     systemInit::syncTime();
     delay(1000);
 
     Serial.println("Fetching Now Playing data...");
-    displayShowFetching();
+    display::showFetching();
     lastFmFetchAndDisplay();
 }
 
 void loop() {
     if (!wifi::isConnected()) {
         Serial.println("WiFi disconnected. Reconnecting...");
-        displayShowWifiReconnecting();
+        display::showWifiReconnecting();
         if (wifi::tryReconnect()) {
             Serial.println("Reconnected.");
         }
